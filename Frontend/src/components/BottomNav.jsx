@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AiOutlineHome, AiFillHome } from "react-icons/ai";
 import { BiSearch } from "react-icons/bi";
-import { BsCameraVideo, BsCameraVideoFill, BsPlusSquare } from "react-icons/bs";
+import { BsCameraVideo, BsCameraVideoFill } from "react-icons/bs";
 import { IoNotificationsOutline, IoNotifications, IoChatbubbleOutline, IoChatbubble } from "react-icons/io5";
 import { useSelector } from "react-redux";
 import Avatar from "./Avatar";
@@ -14,7 +14,7 @@ export default function BottomNav() {
   const tabs = [
     { to: "/",              end: true, A: <AiFillHome size={22} />,        I: <AiOutlineHome size={22} />,         badge: 0 },
     { to: "/search",                   A: <BiSearch size={22} />,           I: <BiSearch size={22} />,              badge: 0 },
-    { to: "/create",                   A: <BsPlusSquare size={20} />,       I: <BsPlusSquare size={20} />,          badge: 0 },
+    { to: "/reels",                    A: <BsCameraVideoFill size={21} />,  I: <BsCameraVideo size={21} />,         badge: 0 },
     { to: "/messages",                 A: <IoChatbubble size={20} />,       I: <IoChatbubbleOutline size={20} />,   badge: unreadMsgs },
     { to: "/notifications",            A: <IoNotifications size={22} />,    I: <IoNotificationsOutline size={22}/>, badge: unread },
   ];
@@ -56,6 +56,7 @@ export default function BottomNav() {
         </NavLink>
       ))}
 
+      {/* Profile */}
       <NavLink to="/profile" className="flex-1 flex items-center justify-center h-full">
         {({ isActive }) => (
           <motion.div whileTap={{ scale: 0.72 }}
