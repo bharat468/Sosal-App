@@ -1,68 +1,61 @@
-import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
+/**
+ * Seed demo reels using free Cloudinary sample videos
+ * Run: node seed-reels.mjs
+ */
+import "dotenv/config";
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
-const pool    = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma  = new PrismaClient({ adapter });
+await mongoose.connect(process.env.MONGO_URL);
+console.log("Connected");
 
-// authorId map — seed.mjs se bane users ke usernames
-const authorMap = {
-  u1: "rahul_sharma",
-  u2: "priya_verma",
-  u3: "amit_singh",
-  u4: "neha_gupta",
-  u5: "rohit_yadav",
-  u6: "sneha_patel",
-  u7: "karan_mehta",
-};
+const User = mongoose.model("User", new mongoose.Schema({
+  username: String, name: String, email: String, password: String, avatar: String,
+}, { strict: false }), "users");
 
-const reels = [
-  { video_url: "https://www.w3schools.com/html/mov_bbb.mp4",  caption: "Dance vibes 💃🔥",      authorKey: "u1" },
-  { video_url: "https://www.w3schools.com/html/movie.mp4",    caption: "Travel reel ✈️🌍",      authorKey: "u2" },
-  { video_url: "https://www.w3schools.com/html/mov_bbb.mp4",  caption: "Gym motivation 💪",      authorKey: "u3" },
-  { video_url: "https://www.w3schools.com/html/movie.mp4",    caption: "Food lover 😋🍔",        authorKey: "u4" },
-  { video_url: "https://www.w3schools.com/html/mov_bbb.mp4",  caption: "Bike ride 🏍️🔥",       authorKey: "u5" },
-  { video_url: "https://www.w3schools.com/html/movie.mp4",    caption: "Music mood 🎶",          authorKey: "u6" },
-  { video_url: "https://www.w3schools.com/html/mov_bbb.mp4",  caption: "Sunset reel 🌅✨",       authorKey: "u7" },
+const Post = mongoose.model("Post", new mongoose.Schema({
+  caption: String, mediaUrl: String, mediaType: String,
+  shares: { type: Number, default: 0 }, hashtags: [String],
+  author: mongoose.Schema.Types.ObjectId,
+}, { strict: false, timestamps: true }), "posts");
+
+// Get first user to assign posts to
+const user = await User.findOne({ username: "bharatpareek256" }) || await User.findOne();
+if (!user) { console.error("No user found"); process.exit(1); }
+
+// Free sample videos from Cloudinary demo account
+const demoVideos = [
+  {
+    mediaUrl: "https://res.cloudinary.com/demo/video/upload/dog.mp4",
+    caption: "Cute dog playing 🐕 #pets #cute",
+  },
+  {
+    mediaUrl: "https://res.cloudinary.com/demo/video/upload/sea_turtle.mp4",
+    caption: "Sea turtle swimming 🐢 #ocean #nature",
+  },
+  {
+    mediaUrl: "https://res.cloudinary.com/demo/video/upload/elephants.mp4",
+    caption: "Elephants in the wild 🐘 #wildlife #nature",
+  },
 ];
 
-async function seedReels() {
-  console.log("🎬 Seeding reels...");
+// Delete old empty video posts
+await Post.deleteMany({ mediaType: "video", mediaUrl: "" });
+console.log("Cleared empty video posts");
 
-  for (const r of reels) {
-    const username = authorMap[r.authorKey];
-    const author   = await prisma.user.findUnique({ where: { username } });
+// Add demo reels
+for (const v of demoVideos) {
+  const existing = await Post.findOne({ mediaUrl: v.mediaUrl });
+  if (existing) { console.log("Already exists:", v.caption); continue; }
 
-    if (!author) {
-      console.log(`  ⚠️  User not found: ${username} — run seed.mjs first`);
-      continue;
-    }
-
-    // Skip if already exists
-    const existing = await prisma.post.findFirst({
-      where: { authorId: author.id, caption: r.caption, mediaType: "video" },
-    });
-    if (existing) {
-      console.log(`  ⏭  Reel already exists: "${r.caption}"`);
-      continue;
-    }
-
-    await prisma.post.create({
-      data: {
-        caption:   r.caption,
-        mediaUrl:  r.video_url,
-        mediaType: "video",
-        authorId:  author.id,
-      },
-    });
-    console.log(`  ✅ Created reel: "${r.caption}" by ${username}`);
-  }
-
-  console.log("\n✨ Reels seeded!");
+  await Post.create({
+    ...v,
+    mediaType: "video",
+    author: user._id,
+    hashtags: (v.caption.match(/#\w+/g) || []).map(t => t.toLowerCase()),
+  });
+  console.log("✅ Added:", v.caption);
 }
 
-seedReels()
-  .catch((e) => { console.error("❌ Failed:", e.message); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); pool.end(); });
+console.log("\nDone! Reels seeded.");
+await mongoose.disconnect();

@@ -25,6 +25,7 @@ export default function Avatar({ src, name = "", username = "", size = 40, class
     return (
       <img src={src} alt={name || username}
         loading="lazy"
+        decoding="async"
         style={{ ...baseStyle, objectFit: "cover" }}
         className={className}
         onError={() => setImgError(true)}

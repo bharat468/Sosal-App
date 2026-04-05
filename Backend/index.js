@@ -56,7 +56,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  maxAge: "7d",
+  etag: true,
+}));
 
 // ── REST Routes ────────────────────────────────────────────
 app.use("/api/auth",          authLimiter, authRoutes);
@@ -110,12 +113,12 @@ io.on("connection", (socket) => {
       const message = await Message.create({ text: text.trim(), sender: userId, receiver: receiverId });
       await message.populate("sender receiver", "id username name avatar");
       const msg = { ...message.toObject(), id: message._id };
-
       const receiverSocketId = onlineUsers.get(receiverId);
       if (receiverSocketId) io.to(receiverSocketId).emit("new_message", msg);
       socket.emit("message_sent", msg);
     } catch (err) {
-      socket.emit("message_error", { error: err.message });
+      console.error("[socket send_message]", err.message);
+      socket.emit("message_error", { error: "Failed to send message" });
     }
   });
 

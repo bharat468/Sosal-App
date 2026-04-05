@@ -67,34 +67,33 @@ export const getProfile = async (req, res) => {
 
 // PUT /api/users/profile
 export const updateProfile = async (req, res) => {
-  const { name, username, bio, website, isPrivate } = req.body;
-  const data = {};
-  if (name)                data.name      = name;
-  if (bio !== undefined)   data.bio       = bio;
-  if (website !== undefined) data.website = website;
-  if (isPrivate !== undefined) data.isPrivate = isPrivate === "true" || isPrivate === true;
-  if (req.file) {
-    // Delete old avatar from Cloudinary if exists
-    if (req.user.avatar && req.user.avatar.includes("cloudinary.com")) {
-      const oldPublicId = getPublicId(req.user.avatar);
-      await deleteFromCloudinary(oldPublicId, "image");
+  try {
+    const { name, username, bio, website, isPrivate } = req.body;
+    const data = {};
+    if (name)                data.name      = name;
+    if (bio !== undefined)   data.bio       = bio;
+    if (website !== undefined) data.website = website;
+    if (isPrivate !== undefined) data.isPrivate = isPrivate === "true" || isPrivate === true;
+    if (req.file) {
+      if (req.user.avatar && req.user.avatar.includes("cloudinary.com")) {
+        const oldPublicId = getPublicId(req.user.avatar);
+        await deleteFromCloudinary(oldPublicId, "image");
+      }
+      const result = await uploadToCloudinary(req.file.path, "sosal/avatars");
+      data.avatar = result.url;
+      if (result.isCloud) try { fs.unlinkSync(req.file.path); } catch {}
     }
-    // Upload new avatar
-    const result = await uploadToCloudinary(req.file.path, "sosal/avatars");
-    data.avatar = result.url;
-    if (result.isCloud) {
-      try { fs.unlinkSync(req.file.path); } catch {}
+    if (username && username !== req.user.username) {
+      const ex = await User.findOne({ username });
+      if (ex) return res.status(409).json({ message: "Username already taken" });
+      data.username = username;
     }
+    const user = await User.findByIdAndUpdate(req.user._id, data, { new: true });
+    res.json(safe(user));
+  } catch (err) {
+    console.error("[updateProfile]", err.message);
+    res.status(500).json({ message: "Failed to update profile" });
   }
-
-  if (username && username !== req.user.username) {
-    const ex = await User.findOne({ username });
-    if (ex) return res.status(409).json({ message: "Username already taken" });
-    data.username = username;
-  }
-
-  const user = await User.findByIdAndUpdate(req.user._id, data, { new: true, returnDocument: "after" });
-  res.json(safe(user));
 };
 
 // PUT /api/users/password

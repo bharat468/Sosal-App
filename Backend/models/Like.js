@@ -6,5 +6,6 @@ const likeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 likeSchema.index({ user: 1, post: 1 }, { unique: true });
+likeSchema.index({ post: 1 }); // fast like count queries
 
 export default mongoose.model("Like", likeSchema);

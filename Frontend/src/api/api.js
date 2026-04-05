@@ -4,6 +4,7 @@ import { logout } from "../redux/slices/userSlice";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
+  timeout: 30000, // 30s timeout
 });
 
 api.interceptors.request.use((config) => {

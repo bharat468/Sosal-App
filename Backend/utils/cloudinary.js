@@ -8,37 +8,61 @@ cloudinary.config({
   secure:     true,
 });
 
-// Upload file to Cloudinary
-// Returns { url, publicId, isCloud }
+/**
+ * Upload any file to Cloudinary.
+ * Images → auto format (webp/jpg), Videos → mp4
+ * Returns { url, publicId, isCloud }
+ */
 export async function uploadToCloudinary(filePath, folder = "sosal") {
-  try {
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder,
-      resource_type: "auto",
-      format: "jpg",           // force JPG — avoids AVIF compatibility issues
-      quality: "auto:good",
-    });
-    return { url: result.secure_url, publicId: result.public_id, isCloud: true };
-  } catch (err) {
-    console.error("Cloudinary upload failed:", err.message);
-    // Fallback: keep local file, return local URL via APP_URL env
-    const filename = path.basename(filePath);
-    const base = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
-    return { url: `${base}/uploads/${filename}`, publicId: null, isCloud: false };
+  const ext       = path.extname(filePath).toLowerCase();
+  const isVideo   = [".mp4", ".mov", ".webm", ".avi"].includes(ext);
+  const maxRetries = 3;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const opts = {
+        folder,
+        resource_type: isVideo ? "video" : "image",
+        use_filename: false,
+        unique_filename: true,
+      };
+      // Images: auto format for best quality/size
+      if (!isVideo) {
+        opts.format = "webp";
+        opts.quality = "auto:good";
+      }
+
+      const result = await cloudinary.uploader.upload(filePath, opts);
+      return { url: result.secure_url, publicId: result.public_id, isCloud: true };
+    } catch (err) {
+      if (attempt === maxRetries) {
+        console.error(`[Cloudinary] Upload failed after ${maxRetries} attempts:`, err.message);
+        // Fallback: return local URL — only works locally, not in production
+        const filename = path.basename(filePath);
+        const base = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+        return { url: `${base}/uploads/${filename}`, publicId: null, isCloud: false };
+      }
+      // Wait before retry
+      await new Promise((r) => setTimeout(r, attempt * 1000));
+    }
   }
 }
 
-// Delete from Cloudinary
+/**
+ * Delete a file from Cloudinary by public_id
+ */
 export async function deleteFromCloudinary(publicId, resourceType = "image") {
   if (!publicId) return;
   try {
     await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch (err) {
-    console.error("Cloudinary delete failed:", err.message);
+    console.error("[Cloudinary] Delete failed:", err.message);
   }
 }
 
-// Extract public_id from Cloudinary URL
+/**
+ * Extract public_id from a Cloudinary URL
+ */
 export function getPublicId(url) {
   if (!url || !url.includes("cloudinary.com")) return null;
   const parts = url.split("/");
