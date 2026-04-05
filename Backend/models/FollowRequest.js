@@ -1,0 +1,11 @@
+import mongoose from "mongoose";
+
+const followRequestSchema = new mongoose.Schema({
+  sender:    { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  status:    { type: String, default: "pending" },
+}, { timestamps: true });
+
+followRequestSchema.index({ sender: 1, recipient: 1 }, { unique: true });
+
+export default mongoose.model("FollowRequest", followRequestSchema);

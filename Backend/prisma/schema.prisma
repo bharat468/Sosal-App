@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  username  String   @unique
+  email     String   @unique
+  password  String?
+  googleId  String?  @unique
+  avatar    String   @default("")
+  bio       String   @default("")
+  website   String   @default("")
+  isPrivate Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts                  Post[]
+  comments               Comment[]
+  likes                  Like[]
+  followers              Follow[]        @relation("Following")
+  following              Follow[]        @relation("Follower")
+  notifsSent             Notification[]  @relation("NotifSender")
+  notifsReceived         Notification[]  @relation("NotifRecipient")
+  followRequestsSent     FollowRequest[] @relation("RequestSender")
+  followRequestsReceived FollowRequest[] @relation("RequestRecipient")
+  messagesSent           Message[]       @relation("MessageSender")
+  messagesReceived       Message[]       @relation("MessageReceiver")
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  caption   String   @default("")
+  mediaUrl  String   @default("")
+  mediaType String   @default("text")
+  shares    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId      Int
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  likes         Like[]
+  notifications Notification[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postId        Int
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId      Int
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId Int
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+
+  followerId  Int
+  follower    User @relation("Follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  followingId Int
+  following   User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model FollowRequest {
+  id          Int      @id @default(autoincrement())
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  senderId    Int
+  sender      User @relation("RequestSender",    fields: [senderId],    references: [id], onDelete: Cascade)
+  recipientId Int
+  recipient   User @relation("RequestRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, recipientId])
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  type        String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  recipientId Int
+  recipient   User     @relation("NotifRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  senderId    Int
+  sender      User     @relation("NotifSender",    fields: [senderId],    references: [id], onDelete: Cascade)
+
+  postId    Int?
+  post      Post?    @relation(fields: [postId],    references: [id], onDelete: Cascade)
+  commentId Int?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+}
+
+// Direct Messages
+model Message {
+  id        Int      @id @default(autoincrement())
+  text      String
+  mediaUrl  String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  senderId   Int
+  sender     User @relation("MessageSender",   fields: [senderId],   references: [id], onDelete: Cascade)
+  receiverId Int
+  receiver   User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}

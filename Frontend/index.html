@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sosal — Connect · Share · Discover</title>
+    <meta name="description" content="Sosal — A premium social media app to connect, share and discover." />
+    <meta name="theme-color" content="#0A0A0A" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+    <style>
+      /* Prevent white/brown flash on load — always start black */
+      html, body { background: #000000; margin: 0; padding: 0; }
+    </style>
+    <script>
+      /* Apply saved theme before React loads to prevent flash */
+      (function() {
+        var t = localStorage.getItem('sosal-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.style.background = t === 'dark' ? '#000000' : '#F7F5F1';
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
