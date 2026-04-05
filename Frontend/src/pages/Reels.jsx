@@ -141,14 +141,37 @@ function ReelItem({ post, isActive }) {
   const [followStatus, setFollowStatus] = useState("none");
   const [showShare, setShowShare]   = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const videoRef = useRef(null);
+  const [muted, setMuted]           = useState(false);
+  const videoRef  = useRef(null);
+  const audioRef  = useRef(null);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isActive) {
+      videoRef.current.muted = muted;
+      videoRef.current.play().catch(() => {});
+      if (audioRef.current && post.audioUrl) {
+        audioRef.current.muted = muted;
+        audioRef.current.play().catch(() => {});
+      }
+    } else {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+    }
+  }, [isActive]);
 
   const isOwn = (post.author?.id || post.author?._id)?.toString() === (currentUser?._id || currentUser?.id)?.toString();
 
   useEffect(() => {
     if (!videoRef.current) return;
-    if (isActive) videoRef.current.play().catch(() => {});
-    else { videoRef.current.pause(); videoRef.current.currentTime = 0; }
+    if (isActive) {
+      videoRef.current.muted = muted;
+      videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
   }, [isActive]);
 
   const handleLike = async () => {
@@ -189,7 +212,12 @@ function ReelItem({ post, isActive }) {
 
         <video ref={videoRef} src={post.mediaUrl}
           className="absolute inset-0 w-full h-full object-cover"
-          loop muted playsInline preload="auto" />
+          loop playsInline preload="auto" />
+
+        {/* Background music audio element */}
+        {post.audioUrl && (
+          <audio ref={audioRef} src={post.audioUrl} loop preload="auto" />
+        )}
 
         {/* Gradients */}
         <div className="absolute inset-0 pointer-events-none"
@@ -211,9 +239,23 @@ function ReelItem({ post, isActive }) {
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-4 pb-2">
           <span className="text-white text-xl font-bold drop-shadow" style={{ fontFamily: "Sora, sans-serif" }}>Reels</span>
-          <motion.button whileTap={{ scale: 0.85 }}>
-            <HiDotsHorizontal size={24} className="text-white drop-shadow" />
-          </motion.button>
+          <div className="flex items-center gap-3">
+            {/* Mute/Unmute button */}
+            <motion.button whileTap={{ scale: 0.85 }}
+              onClick={() => {
+                const newMuted = !muted;
+                setMuted(newMuted);
+                if (videoRef.current) videoRef.current.muted = newMuted;
+                if (audioRef.current) audioRef.current.muted = newMuted;
+              }}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(0,0,0,0.4)" }}>
+              <span className="text-white text-base">{muted ? "🔇" : "🔊"}</span>
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.85 }}>
+              <HiDotsHorizontal size={24} className="text-white drop-shadow" />
+            </motion.button>
+          </div>
         </div>
 
         {/* Right action buttons */}

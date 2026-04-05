@@ -6,6 +6,8 @@ const postSchema = new mongoose.Schema({
   mediaType: { type: String, default: "text", enum: ["text", "image", "video"] },
   shares:    { type: Number, default: 0 },
   hashtags:  [{ type: String }],
+  audioUrl:  { type: String, default: "" },   // background music
+  trackTitle: { type: String, default: "" },  // song name shown on post
   author:    { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 }, { timestamps: true });
 

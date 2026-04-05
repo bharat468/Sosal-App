@@ -414,6 +414,17 @@ export default function PostCard({ post }) {
           </div>
         )}
 
+        {/* Music bar */}
+        {post.trackTitle && (
+          <div className="px-4 pb-2 flex items-center gap-2">
+            <div className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+              style={{ background: "var(--accent)" }}>
+              <span className="text-white" style={{ fontSize: 10 }}>♪</span>
+            </div>
+            <p className="text-xs truncate" style={{ color: "var(--t3)" }}>{post.trackTitle}</p>
+          </div>
+        )}
+
         {/* View comments */}
         {commentCount > 0 && (
           <button onClick={() => setShowComments(true)} className="px-4 pb-2 block text-sm"

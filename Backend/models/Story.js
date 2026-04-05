@@ -6,6 +6,8 @@ const storySchema = new mongoose.Schema({
   mediaType: { type: String, default: "image" }, // image | video
   caption:   { type: String, default: "" },
   viewers:   [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  audioUrl:  { type: String, default: "" },
+  trackTitle: { type: String, default: "" },
   expiresAt: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) },
 }, { timestamps: true });
 

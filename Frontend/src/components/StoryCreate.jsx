@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { IoClose } from "react-icons/io5";
+import { IoClose, IoMusicalNotes } from "react-icons/io5";
 import { BsImage, BsCameraVideo } from "react-icons/bs";
 import api from "../api/api";
+import MusicPicker from "./MusicPicker";
 
 export default function StoryCreate({ onClose, onCreated }) {
   const fileRef = useRef(null);
@@ -11,6 +12,8 @@ export default function StoryCreate({ onClose, onCreated }) {
   const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
 
   const handleFile = (e) => {
     const f = e.target.files[0];
@@ -27,6 +30,10 @@ export default function StoryCreate({ onClose, onCreated }) {
       const fd = new FormData();
       fd.append("media", file);
       if (caption.trim()) fd.append("caption", caption.trim());
+      if (selectedTrack) {
+        fd.append("audioUrl",   selectedTrack.url);
+        fd.append("trackTitle", selectedTrack.title + " - " + selectedTrack.artist);
+      }
       const { data } = await api.post("/stories", fd, { headers: { "Content-Type": "multipart/form-data" } });
       onCreated(data);
       onClose();
@@ -50,6 +57,12 @@ export default function StoryCreate({ onClose, onCreated }) {
           <h2 className="text-base font-bold" style={{ color: "var(--t1)" }}>Add to Story</h2>
           <button onClick={onClose}><IoClose size={22} style={{ color: "var(--t3)" }} /></button>
         </div>
+
+        <AnimatePresence>
+          {showMusicPicker && (
+            <MusicPicker selected={selectedTrack} onSelect={setSelectedTrack} onClose={() => setShowMusicPicker(false)} />
+          )}
+        </AnimatePresence>
 
         <div className="p-5 flex flex-col gap-4">
           {/* Preview / Upload area */}
@@ -85,6 +98,20 @@ export default function StoryCreate({ onClose, onCreated }) {
               placeholder="Add a caption..." className="app-input text-sm"
               style={{ borderRadius: 10 }} />
           )}
+
+          {/* Music button */}
+          <motion.button type="button" whileTap={{ scale: 0.96 }}
+            onClick={() => setShowMusicPicker(true)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left"
+            style={{ background: "var(--bg-input)", border: "1px solid var(--border)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: selectedTrack ? "var(--accent)" : "var(--bg-hover)" }}>
+              <IoMusicalNotes size={15} style={{ color: selectedTrack ? "#fff" : "var(--t3)" }} />
+            </div>
+            <p className="text-sm truncate" style={{ color: selectedTrack ? "var(--t1)" : "var(--t3)" }}>
+              {selectedTrack ? `${selectedTrack.title} - ${selectedTrack.artist}` : "Add music"}
+            </p>
+          </motion.button>
 
           {error && <p className="text-sm text-center" style={{ color: "#ed4956" }}>{error}</p>}
 

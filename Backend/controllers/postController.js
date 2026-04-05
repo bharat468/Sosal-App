@@ -79,7 +79,12 @@ export const createPost = async (req, res) => {
   // Extract hashtags from caption
   const hashtags = caption ? [...new Set((caption.match(/#\w+/g) || []).map(t => t.toLowerCase()))] : [];
 
-  const post = await Post.create({ caption: caption || "", mediaUrl, mediaType, hashtags, author: req.user._id });
+  const post = await Post.create({
+    caption: caption || "", mediaUrl, mediaType, hashtags,
+    audioUrl: req.body.audioUrl || "",
+    trackTitle: req.body.trackTitle || "",
+    author: req.user._id,
+  });
   await post.populate("author", "id username name avatar");
   res.status(201).json({ ...post.toObject(), id: post._id, _count: { likes: 0, comments: 0 } });
 };

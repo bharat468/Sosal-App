@@ -21,6 +21,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import messageRoutes      from "./routes/messageRoutes.js";
 import storyRoutes        from "./routes/storyRoutes.js";
 import adminRoutes        from "./routes/adminRoutes.js";
+import trackRoutes        from "./routes/trackRoutes.js";
 import Message            from "./models/Message.js";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
 
@@ -66,6 +67,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/messages",      messageRoutes);
 app.use("/api/stories",       storyRoutes);
 app.use("/api/admin",         adminRoutes);
+app.use("/api/tracks",        trackRoutes);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
