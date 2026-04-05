@@ -32,11 +32,10 @@ services:
         value: bharatpareek256@gmail.com
     healthCheckPath: /api/health
 
-  # ── Frontend — React/Vite Static Site ─────────────────────
+  # ── Frontend — Static Site (no plan needed for static) ────
   - type: web
     name: sosal-frontend
     runtime: static
-    plan: free
     rootDir: Frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
