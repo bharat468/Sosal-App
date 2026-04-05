@@ -2,21 +2,21 @@ import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AiOutlineHome, AiFillHome } from "react-icons/ai";
 import { BiSearch } from "react-icons/bi";
-import { BsCameraVideo, BsCameraVideoFill } from "react-icons/bs";
-import { IoNotificationsOutline, IoNotifications, IoChatbubbleOutline, IoChatbubble } from "react-icons/io5";
+import { BsCameraVideo, BsCameraVideoFill, BsPlusSquare, BsPlusSquareFill } from "react-icons/bs";
+import { IoNotificationsOutline, IoNotifications } from "react-icons/io5";
 import { useSelector } from "react-redux";
 import Avatar from "./Avatar";
 
 export default function BottomNav() {
   const { currentUser }        = useSelector((s) => s.user);
-  const { unread, unreadMsgs } = useSelector((s) => s.notif);
+  const { unread }             = useSelector((s) => s.notif);
 
   const tabs = [
-    { to: "/",              end: true, A: <AiFillHome size={22} />,        I: <AiOutlineHome size={22} />,         badge: 0 },
-    { to: "/search",                   A: <BiSearch size={22} />,           I: <BiSearch size={22} />,              badge: 0 },
-    { to: "/reels",                    A: <BsCameraVideoFill size={21} />,  I: <BsCameraVideo size={21} />,         badge: 0 },
-    { to: "/messages",                 A: <IoChatbubble size={20} />,       I: <IoChatbubbleOutline size={20} />,   badge: unreadMsgs },
-    { to: "/notifications",            A: <IoNotifications size={22} />,    I: <IoNotificationsOutline size={22}/>, badge: unread },
+    { to: "/",       end: true, A: <AiFillHome size={22} />,        I: <AiOutlineHome size={22} />,        badge: 0 },
+    { to: "/search",            A: <BiSearch size={22} />,           I: <BiSearch size={22} />,             badge: 0 },
+    { to: "/reels",             A: <BsCameraVideoFill size={21} />,  I: <BsCameraVideo size={21} />,        badge: 0 },
+    { to: "/create",            A: <BsPlusSquareFill size={21} />,   I: <BsPlusSquare size={21} />,         badge: 0 },
+    { to: "/notifications",     A: <IoNotifications size={22} />,    I: <IoNotificationsOutline size={22}/>, badge: unread },
   ];
 
   return (
@@ -37,7 +37,6 @@ export default function BottomNav() {
         <NavLink key={tab.to} to={tab.to} end={tab.end} className="flex-1 flex items-center justify-center h-full">
           {({ isActive }) => (
             <motion.span whileTap={{ scale: 0.72 }}
-              transition={{ type: "spring", stiffness: 500, damping: 15 }}
               className="relative flex items-center justify-center w-10 h-10 rounded-xl"
               style={{
                 color: isActive ? "var(--accent)" : "var(--t3)",
@@ -56,19 +55,14 @@ export default function BottomNav() {
         </NavLink>
       ))}
 
-      {/* Profile */}
       <NavLink to="/profile" className="flex-1 flex items-center justify-center h-full">
         {({ isActive }) => (
           <motion.div whileTap={{ scale: 0.72 }}
             className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{ background: isActive ? "var(--bg-active)" : "transparent" }}>
-            <Avatar
-              src={currentUser?.avatar}
-              name={currentUser?.name}
-              username={currentUser?.username}
-              size={24}
-              style={{ outline: isActive ? "2px solid var(--accent)" : "none", outlineOffset: 2 }}
-            />
+            <Avatar src={currentUser?.avatar} name={currentUser?.name}
+              username={currentUser?.username} size={24}
+              style={{ outline: isActive ? "2px solid var(--accent)" : "none", outlineOffset: 2 }} />
           </motion.div>
         )}
       </NavLink>
