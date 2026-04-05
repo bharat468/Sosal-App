@@ -12,27 +12,28 @@ services:
         value: production
       - key: PORT
         value: 3000
-      - key: MONGO_URL
-        value: mongodb://bharatDB:Full1245@ac-cwknfte-shard-00-00.mmqxdu1.mongodb.net:27017,ac-cwknfte-shard-00-01.mmqxdu1.mongodb.net:27017,ac-cwknfte-shard-00-02.mmqxdu1.mongodb.net:27017/SosalApp?ssl=true&authSource=admin&retryWrites=true&w=majority
-      - key: JWT_SECRET
-        value: d7d9b103e4535c074698d8b057e0685b6735f9c5fb8c5b4f60dc5a3995629c7cb3b3bc86c8851594c291a6ed94e489b611b399913b1dd9d4dd54d8b0376f2bf4
       - key: APP_URL
         value: https://sosal-backend.onrender.com
       - key: CLIENT_URL
         value: https://sosal-frontend.onrender.com
+      # ⚠️ Set these manually in Render Dashboard → Environment
+      - key: MONGO_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
-        value: dltcj94az
+        sync: false
       - key: CLOUDINARY_API_KEY
-        value: "464918955872221"
+        sync: false
       - key: CLOUDINARY_API_SECRET
-        value: sHohMRm08fqngErVQqDGAzrGmVE
+        sync: false
       - key: GOOGLE_CLIENT_ID
-        value: 405145260150-am79nt1vben0fupc6623tir6kibi14aa.apps.googleusercontent.com
+        sync: false
       - key: ADMIN_EMAIL
-        value: bharatpareek256@gmail.com
+        sync: false
     healthCheckPath: /api/health
 
-  # ── Frontend — Static Site (no plan needed for static) ────
+  # ── Frontend — Static Site ─────────────────────────────────
   - type: web
     name: sosal-frontend
     runtime: static
@@ -43,7 +44,7 @@ services:
       - key: VITE_API_URL
         value: https://sosal-backend.onrender.com/api
       - key: VITE_GOOGLE_CLIENT_ID
-        value: 405145260150-am79nt1vben0fupc6623tir6kibi14aa.apps.googleusercontent.com
+        sync: false
     routes:
       - type: rewrite
         source: /*
