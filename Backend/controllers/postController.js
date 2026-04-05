@@ -1,4 +1,3 @@
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Post from "../models/Post.js";
@@ -6,6 +5,7 @@ import Like from "../models/Like.js";
 import Follow from "../models/Follow.js";
 import Notification from "../models/Notification.js";
 import { uploadToCloudinary, deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
+import { uploadStreamToCloudinary } from "../middlewares/upload.js";
 
 const __dirname  = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,18 +41,15 @@ const getLikesAndComments = async (postIds, userId) => {
   return { likeMap, likedSet, commentMap };
 };
 
-// Delete media from Cloudinary or local
+// Delete media from Cloudinary only
 const deleteMedia = async (mediaUrl) => {
   if (!mediaUrl) return;
   if (mediaUrl.includes("cloudinary.com")) {
-    const publicId    = getPublicId(mediaUrl);
-    const isVideo     = mediaUrl.includes("/video/");
+    const publicId = getPublicId(mediaUrl);
+    const isVideo  = mediaUrl.includes("/video/");
     await deleteFromCloudinary(publicId, isVideo ? "video" : "image");
-  } else if (mediaUrl.includes("/uploads/")) {
-    const filename = mediaUrl.split("/uploads/")[1];
-    const filePath = path.join(__dirname, "../uploads", filename);
-    if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch {}
   }
+  // Local files: no-op (ephemeral on Render anyway)
 };
 
 // POST /api/posts
@@ -63,10 +60,14 @@ export const createPost = async (req, res) => {
     let mediaType = "text";
 
     if (req.file) {
-      const result = await uploadToCloudinary(req.file.path, "sosal/posts");
+      // Upload directly from memory buffer to Cloudinary
+      const result = await uploadStreamToCloudinary(
+        req.file.buffer,
+        req.file.mimetype,
+        "sosal/posts"
+      );
       mediaUrl  = result.url;
       mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-      if (result.isCloud) try { fs.unlinkSync(req.file.path); } catch {}
     } else if (bodyMediaUrl?.trim()) {
       mediaUrl  = bodyMediaUrl.trim();
       const lower = mediaUrl.toLowerCase();
@@ -225,10 +226,13 @@ export const editPost = async (req, res) => {
 
     if (req.file) {
       await deleteMedia(post.mediaUrl);
-      const result = await uploadToCloudinary(req.file.path, "sosal/posts");
+      const result = await uploadStreamToCloudinary(
+        req.file.buffer,
+        req.file.mimetype,
+        "sosal/posts"
+      );
       data.mediaUrl  = result.url;
       data.mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-      if (result.isCloud) try { fs.unlinkSync(req.file.path); } catch {}
     }
 
     const updated = await Post.findByIdAndUpdate(post._id, data, { new: true })

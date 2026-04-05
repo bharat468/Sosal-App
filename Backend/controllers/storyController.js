@@ -1,7 +1,8 @@
 import fs from "fs";
 import Story from "../models/Story.js";
 import Follow from "../models/Follow.js";
-import { uploadToCloudinary, deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
+import { uploadStreamToCloudinary } from "../middlewares/upload.js";
 
 // POST /api/stories
 export const createStory = async (req, res) => {
@@ -11,10 +12,13 @@ export const createStory = async (req, res) => {
     let mediaType = "image";
 
     if (req.file) {
-      const result = await uploadToCloudinary(req.file.path, "sosal/stories");
+      const result = await uploadStreamToCloudinary(
+        req.file.buffer,
+        req.file.mimetype,
+        "sosal/stories"
+      );
       mediaUrl  = result.url;
       mediaType = req.file.mimetype.startsWith("video") ? "video" : "image";
-      if (result.isCloud) try { fs.unlinkSync(req.file.path); } catch {}
     } else if (bodyUrl?.trim()) {
       mediaUrl  = bodyUrl.trim();
       const lower = mediaUrl.toLowerCase();

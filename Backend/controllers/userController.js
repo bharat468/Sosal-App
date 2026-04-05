@@ -5,7 +5,8 @@ import Follow from "../models/Follow.js";
 import FollowRequest from "../models/FollowRequest.js";
 import Notification from "../models/Notification.js";
 import Post from "../models/Post.js";
-import { uploadToCloudinary, deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
+import { uploadStreamToCloudinary } from "../middlewares/upload.js";
 
 const safe = (u) => { const obj = u.toObject ? u.toObject() : u; const { password, ...rest } = obj; return { ...rest, id: u._id }; };
 
@@ -79,9 +80,12 @@ export const updateProfile = async (req, res) => {
         const oldPublicId = getPublicId(req.user.avatar);
         await deleteFromCloudinary(oldPublicId, "image");
       }
-      const result = await uploadToCloudinary(req.file.path, "sosal/avatars");
+      const result = await uploadStreamToCloudinary(
+        req.file.buffer,
+        req.file.mimetype,
+        "sosal/avatars"
+      );
       data.avatar = result.url;
-      if (result.isCloud) try { fs.unlinkSync(req.file.path); } catch {}
     }
     if (username && username !== req.user.username) {
       const ex = await User.findOne({ username });
