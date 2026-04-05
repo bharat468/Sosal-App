@@ -3,6 +3,7 @@ services:
   - type: web
     name: sosal-backend
     runtime: node
+    plan: free
     rootDir: Backend
     buildCommand: npm install
     startCommand: node index.js
@@ -12,49 +13,38 @@ services:
       - key: PORT
         value: 3000
       - key: MONGO_URL
-        sync: false          # set manually in Render dashboard
+        value: mongodb://bharatDB:Full1245@ac-cwknfte-shard-00-00.mmqxdu1.mongodb.net:27017,ac-cwknfte-shard-00-01.mmqxdu1.mongodb.net:27017,ac-cwknfte-shard-00-02.mmqxdu1.mongodb.net:27017/SosalApp?ssl=true&authSource=admin&retryWrites=true&w=majority
       - key: JWT_SECRET
-        sync: false          # set manually in Render dashboard
-      - key: CLIENT_URL
-        fromService:
-          name: sosal-frontend
-          type: web
-          property: host
-          format: https://{host}
+        value: d7d9b103e4535c074698d8b057e0685b6735f9c5fb8c5b4f60dc5a3995629c7cb3b3bc86c8851594c291a6ed94e489b611b399913b1dd9d4dd54d8b0376f2bf4
       - key: APP_URL
-        fromService:
-          name: sosal-backend
-          type: web
-          property: host
-          format: https://{host}
+        value: https://sosal-backend.onrender.com
+      - key: CLIENT_URL
+        value: https://sosal-frontend.onrender.com
       - key: CLOUDINARY_CLOUD_NAME
-        sync: false
+        value: dltcj94az
       - key: CLOUDINARY_API_KEY
-        sync: false
+        value: "464918955872221"
       - key: CLOUDINARY_API_SECRET
-        sync: false
+        value: sHohMRm08fqngErVQqDGAzrGmVE
       - key: GOOGLE_CLIENT_ID
-        sync: false
+        value: 405145260150-am79nt1vben0fupc6623tir6kibi14aa.apps.googleusercontent.com
       - key: ADMIN_EMAIL
-        sync: false
+        value: bharatpareek256@gmail.com
     healthCheckPath: /api/health
 
   # ── Frontend — React/Vite Static Site ─────────────────────
   - type: web
     name: sosal-frontend
     runtime: static
+    plan: free
     rootDir: Frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          name: sosal-backend
-          type: web
-          property: host
-          format: https://{host}/api
+        value: https://sosal-backend.onrender.com/api
       - key: VITE_GOOGLE_CLIENT_ID
-        sync: false          # set manually in Render dashboard
+        value: 405145260150-am79nt1vben0fupc6623tir6kibi14aa.apps.googleusercontent.com
     routes:
       - type: rewrite
         source: /*
