@@ -1,0 +1,29 @@
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.production
+.env.*
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build output
+dist/
+build/
+.next/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+Backend/fix-posts.mjs
+Backend/fix-media.mjs
+Backend/fix-avatar.mjs
+Backend/make-admin.mjs

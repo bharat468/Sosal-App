@@ -15,8 +15,8 @@ export async function uploadToCloudinary(filePath, folder = "sosal") {
     const result = await cloudinary.uploader.upload(filePath, {
       folder,
       resource_type: "auto",
-      use_filename: false,
-      unique_filename: true,
+      format: "jpg",           // force JPG — avoids AVIF compatibility issues
+      quality: "auto:good",
     });
     return { url: result.secure_url, publicId: result.public_id, isCloud: true };
   } catch (err) {
