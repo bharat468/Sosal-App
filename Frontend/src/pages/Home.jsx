@@ -5,7 +5,7 @@ import StorySection from "../components/StorySection";
 import PostCard from "../components/PostCard";
 import PageTransition from "../components/PageTransition";
 import { BsSend } from "react-icons/bs";
-import { AiOutlineHeart } from "react-icons/ai";
+import { IoNotificationsOutline } from "react-icons/io5";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
@@ -40,8 +40,16 @@ export default function Home() {
       <div className="md:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-20 app-header">
         <span className="text-[22px] font-bold" style={{ fontFamily: "Sora, sans-serif", color: "var(--t1)", letterSpacing: "-0.5px" }}>Sosal</span>
         <div className="flex items-center gap-3">
-          <Link to="/notifications"><motion.button whileTap={{ scale: 0.78 }}><AiOutlineHeart size={26} style={{ color: "var(--t1)" }} /></motion.button></Link>
-          <Link to="/messages"><motion.button whileTap={{ scale: 0.78 }}><BsSend size={22} style={{ color: "var(--t1)" }} /></motion.button></Link>
+          <Link to="/notifications">
+            <motion.button whileTap={{ scale: 0.78 }}>
+              <IoNotificationsOutline size={24} style={{ color: "var(--t1)" }} />
+            </motion.button>
+          </Link>
+          <Link to="/messages">
+            <motion.button whileTap={{ scale: 0.78 }}>
+              <BsSend size={21} style={{ color: "var(--t1)" }} />
+            </motion.button>
+          </Link>
         </div>
       </div>
 
