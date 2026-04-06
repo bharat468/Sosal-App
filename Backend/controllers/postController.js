@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import Post from "../models/Post.js";
+import Story from "../models/Story.js";
 import Like from "../models/Like.js";
 import Follow from "../models/Follow.js";
 import Notification from "../models/Notification.js";
@@ -39,6 +40,18 @@ const getLikesAndComments = async (postIds, userId) => {
   const likedSet   = new Set(userLikes.map((l) => l.post.toString()));
   const commentMap = Object.fromEntries(commentCounts.map((c) => [c._id.toString(), c.count]));
   return { likeMap, likedSet, commentMap };
+};
+
+const getStoryAuthorSet = async (authorIds = []) => {
+  const uniqueIds = [...new Set(authorIds.map((id) => id?.toString()).filter(Boolean))];
+  if (uniqueIds.length === 0) return new Set();
+
+  const rows = await Story.find({
+    author: { $in: uniqueIds },
+    expiresAt: { $gt: new Date() },
+  }).select("author");
+
+  return new Set(rows.map((s) => s.author.toString()));
 };
 
 // Delete media from Cloudinary only
@@ -113,6 +126,7 @@ export const getFeed = async (req, res) => {
     const total     = allPosts.length;
     const paginated = allPosts.slice(skip, skip + limit);
     const postIds   = paginated.map((p) => p._id);
+    const storyAuthorSet = await getStoryAuthorSet(paginated.map((p) => p.author?._id || p.author));
 
     const { likeMap, likedSet, commentMap } = await getLikesAndComments(postIds, req.user._id);
 
@@ -120,6 +134,7 @@ export const getFeed = async (req, res) => {
       posts: paginated.map((p) => ({
         ...p.toObject(), id: p._id,
         liked: likedSet.has(p._id.toString()),
+        authorHasStory: storyAuthorSet.has((p.author?._id || p.author)?.toString()),
         _count: { likes: likeMap[p._id.toString()] || 0, comments: commentMap[p._id.toString()] || 0 },
       })),
       total, page, pages: Math.ceil(total / limit),
@@ -143,6 +158,7 @@ export const getReels = async (req, res) => {
     const total     = allVideos.length;
     const paginated = allVideos.slice((page - 1) * limit, page * limit);
     const postIds   = paginated.map((p) => p._id);
+    const storyAuthorSet = await getStoryAuthorSet(paginated.map((p) => p.author?._id || p.author));
 
     const { likeMap, likedSet, commentMap } = await getLikesAndComments(postIds, req.user._id);
 
@@ -150,6 +166,7 @@ export const getReels = async (req, res) => {
       posts: paginated.map((p) => ({
         ...p.toObject(), id: p._id,
         liked: likedSet.has(p._id.toString()),
+        authorHasStory: storyAuthorSet.has((p.author?._id || p.author)?.toString()),
         _count: { likes: likeMap[p._id.toString()] || 0, comments: commentMap[p._id.toString()] || 0 },
       })),
       total, page, pages: Math.ceil(total / limit), hasMore: page < Math.ceil(total / limit),
@@ -176,7 +193,15 @@ export const getPost = async (req, res) => {
       Comment.find({ post: post._id }).sort({ createdAt: -1 }).limit(20).populate("author", "id username name avatar"),
     ]);
 
-    res.json({ ...post.toObject(), id: post._id, liked: !!liked, _count: { likes: likeCount, comments: comments.length }, comments });
+    const storyAuthorSet = await getStoryAuthorSet([post.author?._id || post.author]);
+    res.json({
+      ...post.toObject(),
+      id: post._id,
+      liked: !!liked,
+      authorHasStory: storyAuthorSet.has((post.author?._id || post.author)?.toString()),
+      _count: { likes: likeCount, comments: comments.length },
+      comments,
+    });
   } catch (err) {
     console.error("[getPost]", err.message);
     res.status(500).json({ message: "Failed to load post" });
@@ -197,12 +222,14 @@ export const getUserPosts = async (req, res) => {
     ]);
 
     const postIds = posts.map((p) => p._id);
+    const storyAuthorSet = await getStoryAuthorSet(posts.map((p) => p.author?._id || p.author));
     const { likeMap, likedSet, commentMap } = await getLikesAndComments(postIds, req.user._id);
 
     res.json({
       posts: posts.map((p) => ({
         ...p.toObject(), id: p._id,
         liked: likedSet.has(p._id.toString()),
+        authorHasStory: storyAuthorSet.has((p.author?._id || p.author)?.toString()),
         _count: { likes: likeMap[p._id.toString()] || 0, comments: commentMap[p._id.toString()] || 0 },
       })),
       total, page, pages: Math.ceil(total / limit),
@@ -316,12 +343,14 @@ export const getByHashtag = async (req, res) => {
     ]);
 
     const postIds = posts.map((p) => p._id);
+    const storyAuthorSet = await getStoryAuthorSet(posts.map((p) => p.author?._id || p.author));
     const { likeMap, likedSet, commentMap } = await getLikesAndComments(postIds, req.user._id);
 
     res.json({
       posts: posts.map((p) => ({
         ...p.toObject(), id: p._id,
         liked: likedSet.has(p._id.toString()),
+        authorHasStory: storyAuthorSet.has((p.author?._id || p.author)?.toString()),
         _count: { likes: likeMap[p._id.toString()] || 0, comments: commentMap[p._id.toString()] || 0 },
       })),
       total, page, pages: Math.ceil(total / limit), tag,

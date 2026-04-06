@@ -6,7 +6,7 @@ import { BsEmojiSmile, BsImage, BsCheck2, BsCheck2All } from "react-icons/bs";
 import { HiDotsHorizontal } from "react-icons/hi";
 import { AiOutlineSend } from "react-icons/ai";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
 import Avatar from "../components/Avatar";
 import api from "../api/api";
@@ -55,35 +55,26 @@ function SharedPostPreview({ postId, isMe, text, onLoad }) {
 function ChatList({ activeUser, onSelect }) {
   const { currentUser } = useSelector((s) => s.user);
   const { onlineUsers } = useSocket();
-  const [followers, setFollowers]         = useState([]);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState("");
 
   useEffect(() => {
-    Promise.all([
-      api.get("/messages/followers"),
-      api.get("/messages/conversations"),
-    ])
-      .then(([fRes, cRes]) => {
-        setFollowers(fRes.data);
-        setConversations(cRes.data);
+    api.get("/messages/conversations")
+      .then(({ data }) => {
+        setConversations(data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  // Merge: conversations first (with last message), then followers without chat
-  const convUserIds = new Set(conversations.map((c) => c.user.id));
-  const newFollowers = followers.filter((f) => !convUserIds.has(f.id));
-
   const filtered = search.trim()
-    ? [...conversations, ...newFollowers.map((f) => ({ user: f }))].filter((item) => {
+    ? conversations.filter((item) => {
         const u = item.user || item;
         return u.username?.toLowerCase().includes(search.toLowerCase()) ||
                u.name?.toLowerCase().includes(search.toLowerCase());
       })
-    : [...conversations, ...newFollowers.map((f) => ({ user: f }))];
+    : conversations;
 
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--bg-surface)" }}>
@@ -103,7 +94,7 @@ function ChatList({ activeUser, onSelect }) {
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search followers..." className="bg-transparent text-sm flex-1 outline-none"
+            placeholder="Search people..." className="bg-transparent text-sm flex-1 outline-none"
             style={{ color: "var(--t1)" }} />
         </div>
       </div>
@@ -125,8 +116,8 @@ function ChatList({ activeUser, onSelect }) {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <IoChatbubbleOutline size={40} style={{ color: "var(--t4)" }} className="mb-3" />
-            <p className="text-sm font-semibold" style={{ color: "var(--t1)" }}>No followers yet</p>
-            <p className="text-xs mt-1" style={{ color: "var(--t3)" }}>Follow people and they follow back to start chatting</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--t1)" }}>No chats yet</p>
+            <p className="text-xs mt-1" style={{ color: "var(--t3)" }}>People appear here after you message them</p>
           </div>
         ) : (
           filtered.map((item) => {
@@ -544,12 +535,21 @@ function ChatWindow({ user, onBack }) {
 
 // ── Main Messages Page ─────────────────────────────────────
 export default function Messages() {
+  const location = useLocation();
   const dispatch = useDispatch();
   const [activeUser, setActiveUser] = useState(null);
   const [mobileView, setMobileView] = useState("list");
 
   // Clear message unread count when page opens
   useEffect(() => { dispatch(clearUnreadMsg()); }, [dispatch]);
+
+  // Open chat directly when coming from profile message button
+  useEffect(() => {
+    const user = location.state?.user;
+    if (!user) return;
+    setActiveUser(user);
+    setMobileView("chat");
+  }, [location.state]);
 
   const handleSelect = (user) => { setActiveUser(user); setMobileView("chat"); };
   const handleBack   = ()     => { setMobileView("list"); setActiveUser(null); };

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { IoClose } from "react-icons/io5";
 import { Link } from "react-router-dom";
 import Avatar from "./Avatar";
 import api from "../api/api";
+import { showFollowErrorToast, showFollowToast } from "../utils/followFeedback";
 
 export default function FollowersModal({ userId, type, onClose }) {
+  const { currentUser } = useSelector((s) => s.user);
   const [users, setUsers]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [followed, setFollowed] = useState({});
@@ -22,7 +25,10 @@ export default function FollowersModal({ userId, type, onClose }) {
     try {
       const { data } = await api.post(`/users/${uid}/follow`);
       setFollowed((p) => ({ ...p, [uid]: data.following }));
-    } catch {}
+      showFollowToast(data.status);
+    } catch (e) {
+      showFollowErrorToast(e?.response?.data?.message);
+    }
   };
 
   return (
@@ -61,6 +67,8 @@ export default function FollowersModal({ userId, type, onClose }) {
           ) : (
             users.map((user) => {
               const uid = (user._id || user.id)?.toString();
+              const myId = (currentUser?._id || currentUser?.id)?.toString();
+              const isMe = uid === myId;
               return (
                 <div key={uid} className="flex items-center gap-3 px-4 py-3"
                   onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
@@ -74,12 +82,14 @@ export default function FollowersModal({ userId, type, onClose }) {
                       <p className="text-xs truncate" style={{ color: "var(--t3)" }}>{user.name}</p>
                     </Link>
                   </div>
-                  <motion.button whileTap={{ scale: 0.88 }} onClick={() => handleFollow(uid)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
-                    style={followed[uid]
+                  <motion.button whileTap={{ scale: 0.88 }} onClick={() => !isMe && handleFollow(uid)} disabled={isMe}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
+                    style={isMe
                       ? { background: "var(--bg-input)", color: "var(--t3)", border: "1px solid var(--border)" }
-                      : { background: "var(--accent)", color: "#fff" }}>
-                    {followed[uid] ? "Following" : "Follow"}
+                      : followed[uid]
+                        ? { background: "var(--bg-input)", color: "var(--t3)", border: "1px solid var(--border)" }
+                        : { background: "var(--accent)", color: "#fff" }}>
+                    {isMe ? "You" : followed[uid] ? "Following" : "Follow"}
                   </motion.button>
                 </div>
               );

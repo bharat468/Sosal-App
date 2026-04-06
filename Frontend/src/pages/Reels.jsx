@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { AiFillHeart, AiOutlineHeart, AiOutlineComment, AiOutlineSend } from "react-icons/ai";
-import { BsBookmark, BsBookmarkFill, BsMusicNote, BsX } from "react-icons/bs";
+import { BsBookmark, BsBookmarkFill, BsMusicNote, BsTrash, BsX } from "react-icons/bs";
 import { HiDotsHorizontal } from "react-icons/hi";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate, NavLink } from "react-router-dom";
@@ -13,6 +13,7 @@ import Avatar from "../components/Avatar";
 import ShareModal from "../components/ShareModal";
 import api from "../api/api";
 import { formatDistanceToNow } from "../utils/time";
+import { showFollowErrorToast, showFollowToast } from "../utils/followFeedback";
 
 // ── Reels Bottom Nav ───────────────────────────────────────
 function ReelsBottomNav() {
@@ -50,7 +51,7 @@ function ReelsBottomNav() {
 }
 
 // ── Comments Modal for Reels ───────────────────────────────
-function ReelComments({ postId, onClose }) {
+function ReelComments({ postId, postAuthorId, onClose }) {
   const { currentUser } = useSelector((s) => s.user);
   const [comments, setComments] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -74,6 +75,15 @@ function ReelComments({ postId, onClose }) {
     } finally { setSubmitting(false); }
   };
 
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await api.delete(`/comments/${commentId}`);
+      setComments((prev) =>
+        prev.filter((c) => (c.id || c._id)?.toString() !== commentId?.toString())
+      );
+    } catch {}
+  };
+
   return (
     <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -95,8 +105,14 @@ function ReelComments({ postId, onClose }) {
         ) : comments.length === 0 ? (
           <p className="text-center py-8 text-sm text-white/40">No comments yet. Be the first!</p>
         ) : (
-          comments.map((c) => (
-            <div key={c.id || c._id} className="flex items-start gap-3">
+          comments.map((c) => {
+            const cId = (c.id || c._id)?.toString();
+            const currentUserId = (currentUser?.id || currentUser?._id)?.toString();
+            const commentAuthorId = (c.author?.id || c.author?._id)?.toString();
+            const ownerId = postAuthorId?.toString();
+            const canDelete = commentAuthorId === currentUserId || ownerId === currentUserId;
+            return (
+            <div key={cId} className="flex items-start gap-3 group">
               <Avatar src={c.author?.avatar} name={c.author?.name} username={c.author?.username} size={32} />
               <div className="flex-1">
                 <p className="text-sm text-white">
@@ -105,8 +121,16 @@ function ReelComments({ postId, onClose }) {
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">{formatDistanceToNow(c.createdAt)}</p>
               </div>
+              {canDelete && (
+                <motion.button whileTap={{ scale: 0.85 }}
+                  onClick={() => handleDeleteComment(cId)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-white/60">
+                  <BsTrash size={12} />
+                </motion.button>
+              )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -161,6 +185,14 @@ function ReelItem({ post, isActive }) {
     }
   }, [isActive]);
 
+  useEffect(() => {
+    const postId = post.id || post._id;
+    if (!postId) return;
+    api.get(`/posts/${postId}/bookmark`)
+      .then(({ data }) => setSaved(!!data.saved))
+      .catch(() => {});
+  }, [post.id, post._id]);
+
   const isOwn = (post.author?.id || post.author?._id)?.toString() === (currentUser?._id || currentUser?.id)?.toString();
 
   useEffect(() => {
@@ -195,7 +227,23 @@ function ReelItem({ post, isActive }) {
     try {
       const { data } = await api.post(`/users/${authorId}/follow`);
       setFollowStatus(data.status === "followed" ? "following" : data.status === "requested" ? "requested" : "none");
-    } catch {}
+      showFollowToast(data.status);
+    } catch (e) {
+      showFollowErrorToast(e?.response?.data?.message);
+    }
+  };
+
+  const handleBookmark = async () => {
+    const postId = post.id || post._id;
+    if (!postId) return;
+    const prev = saved;
+    setSaved(!prev);
+    try {
+      const { data } = await api.post(`/posts/${postId}/bookmark`);
+      setSaved(!!data.saved);
+    } catch {
+      setSaved(prev);
+    }
   };
 
   const fmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -291,18 +339,24 @@ function ReelItem({ post, isActive }) {
           </motion.button>
 
           {/* Save */}
-          <motion.button whileTap={{ scale: 0.85 }} onClick={() => setSaved(!saved)}>
+          <motion.button whileTap={{ scale: 0.85 }} onClick={handleBookmark}>
             {saved
               ? <BsBookmarkFill size={26} style={{ color: "var(--accent)" }} />
               : <BsBookmark size={26} className="text-white" />}
           </motion.button>
 
           {/* Author avatar */}
-          <div className="mt-1 rounded-full overflow-hidden border-2 border-white" style={{ width: 38, height: 38 }}>
-            <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()}>
+          <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()} className="mt-1">
+            {post.authorHasStory ? (
+              <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
+                <div className="p-[1px] rounded-full" style={{ background: "#000" }}>
+                  <Avatar src={post.author?.avatar} name={post.author?.name} username={post.author?.username} size={38} />
+                </div>
+              </div>
+            ) : (
               <Avatar src={post.author?.avatar} name={post.author?.name} username={post.author?.username} size={38} />
-            </Link>
-          </div>
+            )}
+          </Link>
         </div>
 
         {/* Bottom info */}
@@ -342,6 +396,7 @@ function ReelItem({ post, isActive }) {
           {showComments && (
             <ReelComments
               postId={post.id || post._id}
+              postAuthorId={post.author?.id || post.author?._id}
               onClose={() => setShowComments(false)}
             />
           )}

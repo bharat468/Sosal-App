@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Avatar from "./Avatar";
 import api from "../api/api";
+import { showFollowErrorToast, showFollowToast } from "../utils/followFeedback";
+import { getStoredAccounts, activateStoredAccount } from "../utils/accounts";
+import { setUser } from "../redux/slices/userSlice";
 
 export default function RightPanel() {
+  const dispatch = useDispatch();
   const { currentUser } = useSelector((s) => s.user);
   const [suggestions, setSuggestions] = useState([]);
   const [followed, setFollowed]       = useState({});
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+  const [showSwitchMenu, setShowSwitchMenu] = useState(false);
 
   useEffect(() => {
     api.get("/users/suggestions").then(({ data }) => setSuggestions(data)).catch(() => {});
@@ -22,10 +28,24 @@ export default function RightPanel() {
       if (data.following) {
         setSuggestions((prev) => prev.filter((u) => (u._id || u.id)?.toString() !== userId?.toString()));
       }
-    } catch {}
+      showFollowToast(data.status);
+    } catch (e) {
+      showFollowErrorToast(e?.response?.data?.message);
+    }
   };
 
   if (!currentUser) return null;
+
+  const currentId = (currentUser?._id || currentUser?.id)?.toString();
+  const switchableAccounts = getStoredAccounts().filter((a) => a.user.id?.toString() !== currentId);
+
+  const handleSwitchAccount = (account) => {
+    const user = activateStoredAccount(account);
+    if (!user) return;
+    dispatch(setUser(user));
+    setShowSwitchMenu(false);
+    window.location.href = "/";
+  };
 
   return (
     <aside className="hidden xl:block w-[300px] shrink-0 pl-6 pt-6 pr-2">
@@ -44,9 +64,32 @@ export default function RightPanel() {
             </Link>
             <p className="text-xs truncate" style={{ color: "var(--t3)" }}>{currentUser.name}</p>
           </div>
-          <Link to="/profile">
-            <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Switch</span>
-          </Link>
+          <div className="relative">
+            <button type="button" onClick={() => setShowSwitchMenu((v) => !v)}>
+              <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Switch</span>
+            </button>
+            {showSwitchMenu && (
+              <div className="absolute right-0 top-6 rounded-xl overflow-hidden min-w-[210px] z-20"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+                {switchableAccounts.length === 0 ? (
+                  <p className="px-3 py-2 text-xs" style={{ color: "var(--t3)" }}>No other accounts</p>
+                ) : (
+                  switchableAccounts.map((a) => (
+                    <button key={a.user.id} type="button" onClick={() => handleSwitchAccount(a)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left"
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                      <Avatar src={a.user.avatar} name={a.user.name} username={a.user.username} size={26} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate" style={{ color: "var(--t1)" }}>{a.user.username}</p>
+                        <p className="text-[11px] truncate" style={{ color: "var(--t3)" }}>{a.user.name}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Suggested */}
@@ -58,13 +101,16 @@ export default function RightPanel() {
                 style={{ color: "var(--t3)", fontFamily: "Sora, sans-serif", letterSpacing: "0.08em" }}>
                 Suggested
               </span>
-              <Link to="/search">
-                <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>See all</span>
-              </Link>
+              <button type="button" onClick={() => setShowAllSuggestions((v) => !v)}>
+                <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+                  {showAllSuggestions ? "Show less" : "See all"}
+                </span>
+              </button>
             </div>
 
-            <div className="flex flex-col pb-2">
-              {suggestions.slice(0, 5).map((user, i) => {
+            <div className="flex flex-col pb-2 overflow-y-auto scrollbar-hide"
+              style={{ maxHeight: showAllSuggestions ? 320 : "none" }}>
+              {(showAllSuggestions ? suggestions : suggestions.slice(0, 5)).map((user, i) => {
                 const uid = (user._id || user.id)?.toString();
                 return (
                   <motion.div key={uid}

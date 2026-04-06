@@ -8,6 +8,7 @@ import { BsEye, BsEyeSlash } from "react-icons/bs";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
 import { useTheme } from "../context/ThemeContext";
+import { saveAccountSession } from "../utils/accounts";
 
 export default function Login() {
   const [form, setForm]         = useState({ email: "", password: "" });
@@ -25,6 +26,7 @@ export default function Login() {
     try {
       const { data } = await api.post("/auth/login", form);
       localStorage.setItem("token", data.token);
+      saveAccountSession(data.user, data.token);
       dispatch(setUser(data.user));
       navigate("/");
     } catch (err) {
@@ -37,6 +39,7 @@ export default function Login() {
     try {
       const { data } = await api.post("/auth/google", { credential: credentialResponse.credential });
       localStorage.setItem("token", data.token);
+      saveAccountSession(data.user, data.token);
       dispatch(setUser(data.user));
       navigate("/");
     } catch (err) {

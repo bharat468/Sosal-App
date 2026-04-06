@@ -7,15 +7,24 @@ import Avatar from "./Avatar";
 import api from "../api/api";
 
 export default function ShareModal({ post, onClose }) {
-  const [followers, setFollowers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [sent, setSent]           = useState({});
   const [copied, setCopied]       = useState(false);
   const [search, setSearch]       = useState("");
 
   useEffect(() => {
-    api.get("/messages/followers")
-      .then(({ data }) => setFollowers(data))
+    api.get("/messages/conversations")
+      .then(({ data }) => {
+        const byId = new Map();
+        (data || []).forEach((c) => {
+          const u = c.user;
+          if (!u) return;
+          const uid = (u._id || u.id)?.toString();
+          if (uid) byId.set(uid, u);
+        });
+        setUsers([...byId.values()]);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -52,7 +61,7 @@ export default function ShareModal({ post, onClose }) {
     });
   };
 
-  const filtered = followers.filter((u) =>
+  const filtered = users.filter((u) =>
     !search.trim() ||
     u.username?.toLowerCase().includes(search.toLowerCase()) ||
     u.name?.toLowerCase().includes(search.toLowerCase())
@@ -128,12 +137,12 @@ export default function ShareModal({ post, onClose }) {
         {/* Search */}
         <div className="px-4 pt-3 pb-1 shrink-0">
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search followers..."
+            placeholder="Search people..."
             className="w-full text-sm px-3 py-2 rounded-xl outline-none"
             style={{ background: "var(--bg-input)", color: "var(--t1)", border: "1px solid var(--border)" }} />
         </div>
 
-        {/* Followers list */}
+        {/* People list */}
         <div className="flex-1 overflow-y-auto px-4 py-2 scrollbar-hide">
           {loading ? (
             <div className="flex flex-col gap-3 py-2">
@@ -145,7 +154,7 @@ export default function ShareModal({ post, onClose }) {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-center py-8 text-sm" style={{ color: "var(--t3)" }}>No followers to share with</p>
+            <p className="text-center py-8 text-sm" style={{ color: "var(--t3)" }}>No chats yet</p>
           ) : (
             filtered.map((user) => {
               const uid   = (user._id || user.id)?.toString();
