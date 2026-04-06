@@ -9,6 +9,7 @@ import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 import FollowersModal from "../components/FollowersModal";
 import api from "../api/api";
+import { showFollowErrorToast, showFollowToast } from "../utils/followFeedback";
 
 export default function UserProfile() {
   const { username }    = useParams();
@@ -61,10 +62,27 @@ export default function UserProfile() {
       if (data.followerCount !== undefined) {
         setProfile((p) => ({ ...p, _count: { ...p._count, followers: data.followerCount } }));
       }
-    } catch {} finally { setFollowLoading(false); }
+      showFollowToast(data.status);
+    } catch (e) {
+      showFollowErrorToast(e?.response?.data?.message);
+    } finally { setFollowLoading(false); }
   };
 
-  const handleMessage = () => navigate("/messages");
+  const canMessage = !profile?.isPrivate;
+  const handleMessage = () => {
+    if (!canMessage || !profile) return;
+    navigate("/messages", {
+      state: {
+        user: {
+          id: profile.id,
+          _id: profile.id,
+          username: profile.username,
+          name: profile.name,
+          avatar: profile.avatar,
+        },
+      },
+    });
+  };
 
   const handleBlock = async () => {
     if (!profile) return;
@@ -186,8 +204,8 @@ export default function UserProfile() {
               style={followBtnStyle}>
               {followBtnLabel}
             </motion.button>
-            <motion.button whileTap={{ scale: 0.94 }} onClick={handleMessage}
-              className="flex-1 text-sm font-semibold py-[7px] rounded-lg"
+            <motion.button whileTap={{ scale: 0.94 }} onClick={handleMessage} disabled={!canMessage}
+              className="flex-1 text-sm font-semibold py-[7px] rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: "var(--bg-input)", color: "var(--t1)", border: "1px solid var(--border)" }}>
               Message
             </motion.button>

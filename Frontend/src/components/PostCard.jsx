@@ -50,7 +50,9 @@ function CommentsPanel({ post, onClose }) {
   const handleDelete = async (commentId) => {
     try {
       await api.delete(`/comments/${commentId}`);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setComments((prev) =>
+        prev.filter((c) => (c.id || c._id)?.toString() !== commentId?.toString())
+      );
     } catch {}
   };
 
@@ -93,8 +95,14 @@ function CommentsPanel({ post, onClose }) {
           ) : comments.length === 0 ? (
             <p className="text-center py-8 text-sm" style={{ color: "var(--t3)" }}>No comments yet. Be the first!</p>
           ) : (
-            comments.map((c) => (
-              <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+            comments.map((c) => {
+              const cId = (c.id || c._id)?.toString();
+              const currentUserId = (currentUser?.id || currentUser?._id)?.toString();
+              const commentAuthorId = (c.author?.id || c.author?._id)?.toString();
+              const postAuthorId = (post.author?.id || post.author?._id)?.toString();
+              const canDelete = commentAuthorId === currentUserId || postAuthorId === currentUserId;
+              return (
+              <motion.div key={cId} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                 className="flex items-start gap-3 group">
                 <Link to={`/profile/${c.author?.username}`}>
                   <img src={c.author?.avatar || `https://i.pravatar.cc/150?u=${c.author?.id}`}
@@ -111,17 +119,18 @@ function CommentsPanel({ post, onClose }) {
                     {formatDistanceToNow(c.createdAt)}
                   </p>
                 </div>
-                {(c.author?.id === currentUser?.id || post.author?.id === currentUser?.id) && (
+                {canDelete && (
                   <motion.button
                     whileTap={{ scale: 0.85 }}
-                    onClick={() => handleDelete(c.id)}
+                    onClick={() => handleDelete(cId)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                     style={{ color: "var(--t4)" }}>
                     <BsTrash size={13} />
                   </motion.button>
                 )}
               </motion.div>
-            ))
+            );
+            })
           )}
         </div>
 
@@ -289,11 +298,15 @@ export default function PostCard({ post }) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3">
           <Link to={isOwn ? "/profile" : `/profile/${post.author?.username}`} className="flex items-center gap-3">
-            <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
-              <div className="p-[2px] rounded-full" style={{ background: "var(--bg-surface)" }}>
-                <Avatar src={avatar} name={post.author?.name} username={post.author?.username} size={32} />
+            {post.authorHasStory ? (
+              <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
+                <div className="p-[2px] rounded-full" style={{ background: "var(--bg-surface)" }}>
+                  <Avatar src={avatar} name={post.author?.name} username={post.author?.username} size={32} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <Avatar src={avatar} name={post.author?.name} username={post.author?.username} size={32} />
+            )}
             <div>
               <p className="text-sm font-semibold" style={{ color: "var(--t1)", fontFamily: "Sora, sans-serif" }}>{post.author?.username}</p>
               <p className="text-xs" style={{ color: "var(--t3)" }}>{formatDistanceToNow(post.createdAt)}</p>

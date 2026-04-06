@@ -8,6 +8,7 @@ import { BsEye, BsEyeSlash } from "react-icons/bs";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
 import { useTheme } from "../context/ThemeContext";
+import { saveAccountSession } from "../utils/accounts";
 
 export default function Register() {
   const [form, setForm]         = useState({ name: "", username: "", email: "", password: "", confirm: "" });
@@ -30,6 +31,7 @@ export default function Register() {
         name: form.name, username: form.username, email: form.email, password: form.password,
       });
       localStorage.setItem("token", data.token);
+      saveAccountSession(data.user, data.token);
       dispatch(setUser(data.user));
       navigate("/");
     } catch (err) {
@@ -42,6 +44,7 @@ export default function Register() {
     try {
       const { data } = await api.post("/auth/google", { credential: credentialResponse.credential });
       localStorage.setItem("token", data.token);
+      saveAccountSession(data.user, data.token);
       dispatch(setUser(data.user));
       navigate("/");
     } catch (err) {

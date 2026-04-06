@@ -157,12 +157,16 @@ export default function PostDetail() {
         <div className="flex items-center justify-between px-4 py-3">
           <Link to={isOwn ? "/profile" : `/profile/${post.author?.username}`}
             className="flex items-center gap-3">
-            <div className="p-[2px] rounded-full"
-              style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
-              <div className="p-[2px] rounded-full" style={{ background: "var(--bg-surface)" }}>
-                <Avatar src={avatar} name={post.author?.name} username={post.author?.username} size={32} />
+            {post.authorHasStory ? (
+              <div className="p-[2px] rounded-full"
+                style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
+                <div className="p-[2px] rounded-full" style={{ background: "var(--bg-surface)" }}>
+                  <Avatar src={avatar} name={post.author?.name} username={post.author?.username} size={32} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <Avatar src={avatar} name={post.author?.name} username={post.author?.username} size={32} />
+            )}
             <div>
               <p className="text-sm font-semibold"
                 style={{ color: "var(--t1)", fontFamily: "Sora, sans-serif" }}>

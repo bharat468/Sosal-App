@@ -178,6 +178,12 @@ export default function Profile() {
   const [showEdit, setShowEdit]     = useState(false);
   const [followModal, setFollowModal] = useState(null); // "followers" | "following" | null
 
+  const loadSavedPosts = () => {
+    api.get("/posts/bookmarks?limit=60")
+      .then(({ data }) => setSavedPosts(data.posts || []))
+      .catch(() => {});
+  };
+
   useEffect(() => { dispatch(fetchMe()); }, [dispatch]);
 
   useEffect(() => {
@@ -187,11 +193,12 @@ export default function Profile() {
     api.get(`/posts/user/${uid}?limit=24`)
       .then(({ data }) => setPosts(data.posts || []))
       .finally(() => setLoadingPosts(false));
-    // Load saved posts
-    api.get("/posts/bookmarks?limit=24")
-      .then(({ data }) => setSavedPosts(data.posts || []))
-      .catch(() => {});
+    loadSavedPosts();
   }, [currentUser?.id, currentUser?._id]);
+
+  useEffect(() => {
+    if (activeTab === "saved") loadSavedPosts();
+  }, [activeTab]);
 
   const handleLogout = () => { dispatch(logout()); navigate("/login"); };
 

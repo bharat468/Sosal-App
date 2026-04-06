@@ -5,12 +5,13 @@ import { AiFillHeart } from "react-icons/ai";
 import { IoChatbubble, IoPersonAdd, IoCheckmark, IoClose } from "react-icons/io5";
 import { BsAt } from "react-icons/bs";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 import { formatDistanceToNow } from "../utils/time";
 import api from "../api/api";
 import { useSocket } from "../context/SocketContext";
+import { showFollowErrorToast, showFollowToast } from "../utils/followFeedback";
 
 const iconMap = {
   like:             <AiFillHeart size={13} style={{ color: "#ed4956" }} />,
@@ -74,6 +75,7 @@ function FollowRequestCard({ request, onAction }) {
 }
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { notifications, loading, unread } = useSelector((s) => s.notif);
   const { socket } = useSocket();
@@ -107,9 +109,18 @@ export default function Notifications() {
 
   const handleFollow = async (senderId, notifId) => {
     try {
-      await api.post(`/users/${senderId}/follow`);
-      setFollowed((p) => ({ ...p, [notifId]: true }));
-    } catch {}
+      const { data } = await api.post(`/users/${senderId}/follow`);
+      setFollowed((p) => ({ ...p, [notifId]: data.following }));
+      showFollowToast(data.status);
+    } catch (e) {
+      showFollowErrorToast(e?.response?.data?.message);
+    }
+  };
+
+  const handleOpenNotifPost = (notif) => {
+    const postId = notif?.post?.id || notif?.post?._id;
+    if (!postId) return;
+    navigate(`/post/${postId}`);
   };
 
   return (
@@ -163,14 +174,15 @@ export default function Notifications() {
             <motion.div key={n.id}
               initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="flex items-center gap-3 px-4 py-2.5 transition-colors"
+              className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${(n.type === "like" || n.type === "comment") && (n.post?.id || n.post?._id) ? "cursor-pointer" : ""}`}
               style={!n.read ? { background: "var(--bg-hover)" } : {}}
+              onClick={() => handleOpenNotifPost(n)}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = !n.read ? "var(--bg-hover)" : "transparent"; }}
             >
               {/* Avatar + icon */}
               <div className="relative shrink-0">
-                <Link to={`/profile/${n.sender?.username}`}>
+                <Link to={`/profile/${n.sender?.username}`} onClick={(e) => e.stopPropagation()}>
                   <Avatar src={n.sender?.avatar} name={n.sender?.name} username={n.sender?.username} size={44} />
                 </Link>
                 <div className="absolute -bottom-0.5 -right-0.5 rounded-full p-[3px]"
@@ -191,14 +203,14 @@ export default function Notifications() {
               {/* Action */}
               {n.type === "follow" && !followed[n.id] ? (
                 <motion.button whileTap={{ scale: 0.88 }}
-                  onClick={() => handleFollow(n.sender?.id, n.id)}
+                  onClick={(e) => { e.stopPropagation(); handleFollow(n.sender?.id, n.id); }}
                   className="shrink-0 text-sm font-semibold px-4 py-1.5 rounded-lg grad-btn">
                   Follow
                 </motion.button>
               ) : n.type === "follow" && followed[n.id] ? (
                 <span className="text-xs shrink-0" style={{ color: "var(--t3)" }}>Following</span>
               ) : n.post?.mediaUrl ? (
-                <Link to={`/post/${n.post.id}`}>
+                <Link to={`/post/${n.post.id || n.post._id}`} onClick={(e) => e.stopPropagation()}>
                   <img src={n.post.mediaUrl} alt="post" className="w-11 h-11 object-cover shrink-0 rounded-sm" />
                 </Link>
               ) : null}

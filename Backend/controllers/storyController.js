@@ -1,6 +1,5 @@
 import fs from "fs";
 import Story from "../models/Story.js";
-import Follow from "../models/Follow.js";
 import { deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
 import { uploadStreamToCloudinary } from "../middlewares/upload.js";
 
@@ -44,11 +43,7 @@ export const createStory = async (req, res) => {
 // GET /api/stories/feed
 export const getStoryFeed = async (req, res) => {
   try {
-    const following = await Follow.find({ follower: req.user._id }).select("following");
-    const ids = [req.user._id, ...following.map((f) => f.following)];
-
     const stories = await Story.find({
-      author: { $in: ids },
       expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 }).populate("author", "id username name avatar");
 
@@ -74,6 +69,16 @@ export const getStoryFeed = async (req, res) => {
   } catch (err) {
     console.error("[getStoryFeed]", err.message);
     res.status(500).json({ message: "Failed to load stories" });
+  }
+};
+
+// GET /api/stories/active-authors
+export const getActiveStoryAuthors = async (_req, res) => {
+  try {
+    const authorIds = await Story.distinct("author", { expiresAt: { $gt: new Date() } });
+    res.json(authorIds.map((id) => id.toString()));
+  } catch {
+    res.status(500).json({ message: "Failed to load active stories" });
   }
 };
 

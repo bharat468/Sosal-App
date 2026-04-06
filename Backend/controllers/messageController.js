@@ -1,5 +1,4 @@
 import Message from "../models/Message.js";
-import Follow from "../models/Follow.js";
 import User from "../models/User.js";
 
 // GET /api/messages/conversations
@@ -55,14 +54,17 @@ export const sendMessage = async (req, res) => {
   const receiverId = req.params.userId;
 
   if (!text?.trim()) return res.status(400).json({ message: "Message text required" });
+  if (receiverId?.toString() === req.user._id.toString()) {
+    return res.status(400).json({ message: "Cannot message yourself" });
+  }
 
-  const isFollower = await Follow.findOne({
-    $or: [
-      { follower: req.user._id, following: receiverId },
-      { follower: receiverId,   following: req.user._id },
-    ],
-  });
-  if (!isFollower) return res.status(403).json({ message: "You can only message your followers" });
+  const receiver = await User.findById(receiverId).select("isPrivate");
+  if (!receiver) return res.status(404).json({ message: "User not found" });
+
+  // Private account => not messageable from this flow.
+  if (receiver.isPrivate) {
+    return res.status(403).json({ message: "This account is private. Messaging is disabled." });
+  }
 
   const message = await Message.create({ text: text.trim(), sender: req.user._id, receiver: receiverId });
   await message.populate("sender receiver", "id username name avatar");
@@ -72,9 +74,10 @@ export const sendMessage = async (req, res) => {
 
 // GET /api/messages/followers
 export const getMessageableUsers = async (req, res) => {
-  const followers = await Follow.find({ following: req.user._id }).select("follower");
-  const followerIds = followers.map((f) => f.follower);
+  const users = await User.find({
+    _id: { $ne: req.user._id },
+    isPrivate: { $ne: true },
+  }).select("id username name avatar bio isPrivate");
 
-  const users = await User.find({ _id: { $in: followerIds } }).select("id username name avatar bio");
   res.json(users.map((u) => ({ ...u.toObject(), id: u._id })));
 };
