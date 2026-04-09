@@ -81,6 +81,7 @@ export default function Notifications() {
   const { socket } = useSocket();
   const [requests, setRequests]   = useState([]);
   const [followed, setFollowed]   = useState({});
+  const [followStatus, setFollowStatus] = useState({});
 
   useEffect(() => {
     dispatch(fetchNotifications());
@@ -111,6 +112,15 @@ export default function Notifications() {
     try {
       const { data } = await api.post(`/users/${senderId}/follow`);
       setFollowed((p) => ({ ...p, [notifId]: data.following }));
+      setFollowStatus((p) => ({
+        ...p,
+        [notifId]:
+          data.status === "followed" ? "following" :
+          data.status === "unfollowed" ? "none" :
+          data.status === "requested" ? "requested" :
+          data.status === "request_cancelled" ? "none" :
+          p[notifId] || "none",
+      }));
       showFollowToast(data.status);
     } catch (e) {
       showFollowErrorToast(e?.response?.data?.message);
@@ -201,14 +211,24 @@ export default function Notifications() {
               </div>
 
               {/* Action */}
-              {n.type === "follow" && !followed[n.id] ? (
+              {n.type === "follow" ? (
                 <motion.button whileTap={{ scale: 0.88 }}
-                  onClick={(e) => { e.stopPropagation(); handleFollow(n.sender?.id, n.id); }}
-                  className="shrink-0 text-sm font-semibold px-4 py-1.5 rounded-lg grad-btn">
-                  Follow
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const senderId = n.sender?.id || n.sender?._id;
+                    if (!senderId) return;
+                    handleFollow(senderId, n.id);
+                  }}
+                  className="shrink-0 text-sm font-semibold px-4 py-1.5 rounded-lg"
+                  style={(followStatus[n.id] || n.followStatus || "none") === "following" || (followStatus[n.id] || n.followStatus || "none") === "requested"
+                    ? { background: "var(--bg-input)", color: "var(--t1)", border: "1px solid var(--border)" }
+                    : { background: "var(--accent)", color: "#fff" }}>
+                  {(followStatus[n.id] || n.followStatus || "none") === "requested"
+                    ? "Requested"
+                    : (followStatus[n.id] || n.followStatus || "none") === "following"
+                      ? "Unfollow"
+                      : "Follow"}
                 </motion.button>
-              ) : n.type === "follow" && followed[n.id] ? (
-                <span className="text-xs shrink-0" style={{ color: "var(--t3)" }}>Following</span>
               ) : n.post?.mediaUrl ? (
                 <Link to={`/post/${n.post.id || n.post._id}`} onClick={(e) => e.stopPropagation()}>
                   <img src={n.post.mediaUrl} alt="post" className="w-11 h-11 object-cover shrink-0 rounded-sm" />
