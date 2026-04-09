@@ -225,27 +225,67 @@ export const searchUsers = async (req, res) => {
 
 // GET /api/users/:id/followers
 export const getFollowers = async (req, res) => {
-  const rows = await Follow.find({ following: req.params.id }).populate("follower", "id username name avatar");
-  res.json(rows.map((r) => ({ ...r.follower.toObject(), id: r.follower._id })));
+  const [rows, myFollowing, myPendingRequests] = await Promise.all([
+    Follow.find({ following: req.params.id }).populate("follower", "id username name avatar"),
+    Follow.find({ follower: req.user._id }).select("following"),
+    FollowRequest.find({ sender: req.user._id }).select("recipient"),
+  ]);
+
+  const followingIds = new Set(myFollowing.map((f) => f.following.toString()));
+  const requestedIds = new Set(myPendingRequests.map((r) => r.recipient.toString()));
+
+  res.json(rows.map((r) => {
+    const uid = r.follower._id.toString();
+    return {
+      ...r.follower.toObject(),
+      id: r.follower._id,
+      followStatus: followingIds.has(uid) ? "following" : requestedIds.has(uid) ? "requested" : "none",
+    };
+  }));
 };
 
 // GET /api/users/:id/following
 export const getFollowing = async (req, res) => {
-  const rows = await Follow.find({ follower: req.params.id }).populate("following", "id username name avatar");
-  res.json(rows.map((r) => ({ ...r.following.toObject(), id: r.following._id })));
+  const [rows, myFollowing, myPendingRequests] = await Promise.all([
+    Follow.find({ follower: req.params.id }).populate("following", "id username name avatar"),
+    Follow.find({ follower: req.user._id }).select("following"),
+    FollowRequest.find({ sender: req.user._id }).select("recipient"),
+  ]);
+
+  const followingIds = new Set(myFollowing.map((f) => f.following.toString()));
+  const requestedIds = new Set(myPendingRequests.map((r) => r.recipient.toString()));
+
+  res.json(rows.map((r) => {
+    const uid = r.following._id.toString();
+    return {
+      ...r.following.toObject(),
+      id: r.following._id,
+      followStatus: followingIds.has(uid) ? "following" : requestedIds.has(uid) ? "requested" : "none",
+    };
+  }));
 };
 
 // GET /api/users/suggestions
 export const getSuggestions = async (req, res) => {
-  const myFollowing  = await Follow.find({ follower: req.user._id }).select("following");
-  const excludeIds   = [req.user._id, ...myFollowing.map((f) => f.following)];
+  const [myFollowing, myPendingRequests] = await Promise.all([
+    Follow.find({ follower: req.user._id }).select("following"),
+    FollowRequest.find({ sender: req.user._id }).select("recipient"),
+  ]);
 
-  const users = await User.find({ _id: { $nin: excludeIds } })
+  const followingIds = new Set(myFollowing.map((f) => f.following.toString()));
+  const requestedIds = new Set(myPendingRequests.map((r) => r.recipient.toString()));
+
+  const users = await User.find({ _id: { $ne: req.user._id } })
     .select("id username name avatar bio isPrivate")
     .limit(10);
 
   const usersWithCount = await Promise.all(users.map(async (u) => ({
     ...u.toObject(), id: u._id,
+    followStatus: followingIds.has(u._id.toString())
+      ? "following"
+      : requestedIds.has(u._id.toString())
+        ? "requested"
+        : "none",
     _count: { followers: await Follow.countDocuments({ following: u._id }) },
   })));
 
