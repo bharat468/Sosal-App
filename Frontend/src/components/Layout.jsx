@@ -9,7 +9,7 @@ const noRight = ["/messages", "/reels"];
 export default function Layout() {
   const { pathname } = useLocation();
   const showRight    = !noRight.includes(pathname);
-  const collapseSide = pathname === "/reels";
+  const collapseSide = false;
 
   return (
     <div className="min-h-screen flex w-full" style={{ background: "var(--bg-body)", position: "relative" }}>

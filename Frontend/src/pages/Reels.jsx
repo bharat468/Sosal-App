@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { AiFillHeart, AiOutlineHeart, AiOutlineComment, AiOutlineSend } from "react-icons/ai";
-import { BsBookmark, BsBookmarkFill, BsMusicNote, BsTrash, BsX } from "react-icons/bs";
+import { BsBookmark, BsBookmarkFill, BsChevronDown, BsChevronUp, BsMusicNote, BsTrash, BsX } from "react-icons/bs";
 import { HiDotsHorizontal } from "react-icons/hi";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate, NavLink } from "react-router-dom";
@@ -306,8 +306,8 @@ function ReelItem({ post, isActive }) {
           </div>
         </div>
 
-        {/* Right action buttons */}
-        <div className="absolute right-3 z-20 flex flex-col items-center gap-5" style={{ bottom: 90 }}>
+        {/* Action buttons */}
+        <div className="absolute right-3 md:hidden z-20 flex flex-col items-center gap-5" style={{ bottom: 90 }}>
           {/* Like */}
           <motion.button whileTap={{ scale: 1.3 }} onClick={handleLike} className="flex flex-col items-center gap-1">
             <AnimatePresence mode="wait">
@@ -359,8 +359,59 @@ function ReelItem({ post, isActive }) {
           </Link>
         </div>
 
+        {/* Action rail - desktop */}
+        <div className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 w-[92px] flex-col justify-between px-3 py-5"
+          style={{ background: "#050505", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex flex-col items-center gap-5 pt-16">
+            <motion.button whileTap={{ scale: 1.3 }} onClick={handleLike} className="flex flex-col items-center gap-1">
+              <AnimatePresence mode="wait">
+                {liked ? (
+                  <motion.span key="y" initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <AiFillHeart size={32} style={{ color: "#ed4956" }} />
+                  </motion.span>
+                ) : (
+                  <motion.span key="n" initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <AiOutlineHeart size={32} className="text-white" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              <span className="text-white text-xs font-semibold drop-shadow">{fmt(likes)}</span>
+            </motion.button>
+
+            <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center gap-1"
+              onClick={() => setShowComments(true)}>
+              <AiOutlineComment size={30} className="text-white" style={{ transform: "scaleX(-1)" }} />
+              <span className="text-white text-xs font-semibold drop-shadow">{fmt(commentCount)}</span>
+            </motion.button>
+
+            <motion.button whileTap={{ scale: 0.85 }} className="flex flex-col items-center gap-1"
+              onClick={() => setShowShare(true)}>
+              <AiOutlineSend size={28} className="text-white" />
+              <span className="text-white text-xs font-semibold drop-shadow">Share</span>
+            </motion.button>
+
+            <motion.button whileTap={{ scale: 0.85 }} onClick={handleBookmark}>
+              {saved
+                ? <BsBookmarkFill size={26} style={{ color: "var(--accent)" }} />
+                : <BsBookmark size={26} className="text-white" />}
+            </motion.button>
+          </div>
+
+          <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()} className="flex items-center justify-center">
+            {post.authorHasStory ? (
+              <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
+                <div className="p-[1px] rounded-full" style={{ background: "#000" }}>
+                  <Avatar src={post.author?.avatar} name={post.author?.name} username={post.author?.username} size={42} />
+                </div>
+              </div>
+            ) : (
+              <Avatar src={post.author?.avatar} name={post.author?.name} username={post.author?.username} size={42} />
+            )}
+          </Link>
+        </div>
+
         {/* Bottom info */}
-        <div className="absolute left-0 right-16 z-20 px-4" style={{ bottom: 20 }}>
+        <div className="absolute left-0 right-16 md:right-[108px] z-20 px-4" style={{ bottom: 20 }}>
           <div className="flex items-center gap-2 mb-2">
             <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()}>
               <Avatar src={post.author?.avatar} name={post.author?.name} username={post.author?.username} size={34} />
@@ -442,47 +493,74 @@ export default function Reels() {
     }
   }, [posts.length, hasMore, loadingMore, page, loadReels]);
 
+  const scrollToReel = useCallback((direction) => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    el.scrollBy({ top: direction * el.clientHeight, behavior: "smooth" });
+  }, []);
+
   if (loading) return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ background: "#000" }}>
-      <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-        style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+    <div className="fixed inset-0 flex items-center justify-center p-0 md:p-4 lg:p-6" style={{ background: "#000" }}>
+      <div className="flex h-full w-full items-center justify-center md:w-[420px] lg:w-[440px] md:rounded-[28px] md:overflow-hidden md:border md:border-white/10 md:shadow-2xl"
+        style={{ background: "#000" }}>
+        <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+      </div>
     </div>
   );
 
   if (posts.length === 0) return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: "#000" }}>
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-        <p className="text-white text-xl font-semibold mb-2">No videos yet</p>
-        <p className="text-white/50 text-sm mb-6">Upload a video post to see it here.</p>
-        <motion.button whileTap={{ scale: 0.94 }} onClick={() => navigate("/create")}
-          className="px-6 py-2 rounded-full text-sm font-semibold text-white"
-          style={{ border: "1.5px solid rgba(255,255,255,0.5)" }}>
-          Create Post
-        </motion.button>
+    <div className="fixed inset-0 flex items-center justify-center p-0 md:p-4 lg:p-6" style={{ background: "#000" }}>
+      <div className="flex h-full w-full flex-col md:w-[420px] lg:w-[440px] md:rounded-[28px] md:overflow-hidden md:border md:border-white/10 md:shadow-2xl"
+        style={{ background: "#000" }}>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+          <p className="text-white text-xl font-semibold mb-2">No videos yet</p>
+          <p className="text-white/50 text-sm mb-6">Upload a video post to see it here.</p>
+          <motion.button whileTap={{ scale: 0.94 }} onClick={() => navigate("/create")}
+            className="px-6 py-2 rounded-full text-sm font-semibold text-white"
+            style={{ border: "1.5px solid rgba(255,255,255,0.5)" }}>
+            Create Post
+          </motion.button>
+        </div>
       </div>
-      <ReelsBottomNav />
     </div>
   );
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: "#000" }}>
-      <div ref={containerRef}
-        className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-        style={{ scrollSnapType: "y mandatory" }}
-        onScroll={handleScroll}>
-        {posts.map((post, i) => (
-          <div key={post.id || post._id} className="snap-start" style={{ height: "100%" }}>
-            <ReelItem post={post} isActive={i === activeIdx} />
+    <div className="fixed inset-0 flex items-center justify-center p-0 md:p-4 lg:p-6" style={{ background: "#000" }}>
+      <div className="flex h-full w-full items-center justify-center gap-0 md:gap-4">
+        <div className="flex h-full w-full flex-col md:w-[420px] lg:w-[440px] md:rounded-[28px] md:overflow-hidden md:border md:border-white/10 md:shadow-2xl"
+          style={{ background: "#000" }}>
+          <div ref={containerRef}
+            className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+            style={{ scrollSnapType: "y mandatory" }}
+            onScroll={handleScroll}>
+            {posts.map((post, i) => (
+              <div key={post.id || post._id} className="snap-start" style={{ height: "100%" }}>
+                <ReelItem post={post} isActive={i === activeIdx} />
+              </div>
+            ))}
+            {loadingMore && (
+              <div className="snap-start flex items-center justify-center" style={{ height: "100%" }}>
+                <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+                  style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+              </div>
+            )}
           </div>
-        ))}
-        {loadingMore && (
-          <div className="snap-start flex items-center justify-center" style={{ height: "100%" }}>
-            <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-              style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
-          </div>
-        )}
+        </div>
+        <div className="hidden md:flex flex-col gap-3">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => scrollToReel(-1)}
+            className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
+            <BsChevronUp size={20} />
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => scrollToReel(1)}
+            className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
+            <BsChevronDown size={20} />
+          </motion.button>
+        </div>
       </div>
-      <ReelsBottomNav />
     </div>
   );
 }
