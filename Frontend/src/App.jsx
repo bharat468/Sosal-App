@@ -57,12 +57,12 @@ export default function App() {
         <Routes>
           <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/reels"    element={<RequireAuth><Reels /></RequireAuth>} />
           <Route path="/admin/*"  element={<RequireAuth><AdminPanel /></RequireAuth>} />
 
           <Route element={<RequireAuth><Layout /></RequireAuth>}>
             <Route path="/"                  element={<Home />} />
             <Route path="/search"            element={<Search />} />
+            <Route path="/reels"             element={<Reels />} />
             <Route path="/messages"          element={<Messages />} />
             <Route path="/notifications"     element={<Notifications />} />
             <Route path="/profile"           element={<Profile />} />

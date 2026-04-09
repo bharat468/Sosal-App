@@ -254,8 +254,8 @@ function ReelItem({ post, isActive }) {
         {showShare && <ShareModal post={post} onClose={() => setShowShare(false)} />}
       </AnimatePresence>
 
-      <div className="relative w-full snap-start overflow-hidden"
-        style={{ height: "100%", background: "#000" }}
+      <div className="relative w-full snap-start rounded-2xl"
+        style={{ height: "100%" }}
         onDoubleClick={handleDoubleTap}>
 
         <video ref={videoRef} src={post.mediaUrl}
@@ -269,9 +269,9 @@ function ReelItem({ post, isActive }) {
 
         {/* Gradients */}
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 40%, transparent 65%)" }} />
+          />
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 18%)" }} />
+         />
 
         {/* Double-tap heart */}
         <AnimatePresence>
@@ -360,9 +360,8 @@ function ReelItem({ post, isActive }) {
         </div>
 
         {/* Action rail - desktop */}
-        <div className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 w-[92px] flex-col justify-between px-3 py-5"
-          style={{ background: "#050505", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="flex flex-col items-center gap-5 pt-16">
+        <div className="hidden md:flex absolute right-0 bottom-6 z-20 flex-col items-center gap-5">
+          <div className="flex flex-col items-center gap-5">
             <motion.button whileTap={{ scale: 1.3 }} onClick={handleLike} className="flex flex-col items-center gap-1">
               <AnimatePresence mode="wait">
                 {liked ? (
@@ -395,9 +394,13 @@ function ReelItem({ post, isActive }) {
                 ? <BsBookmarkFill size={26} style={{ color: "var(--accent)" }} />
                 : <BsBookmark size={26} className="text-white" />}
             </motion.button>
+
+            <motion.button whileTap={{ scale: 0.85 }}>
+              <HiDotsHorizontal size={22} className="text-white/90" />
+            </motion.button>
           </div>
 
-          <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()} className="flex items-center justify-center">
+          <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()} className="mt-3 flex items-center justify-center">
             {post.authorHasStory ? (
               <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(135deg, var(--accent), #FF9A6C)" }}>
                 <div className="p-[1px] rounded-full" style={{ background: "#000" }}>
@@ -411,7 +414,7 @@ function ReelItem({ post, isActive }) {
         </div>
 
         {/* Bottom info */}
-        <div className="absolute left-0 right-16 md:right-[108px] z-20 px-4" style={{ bottom: 20 }}>
+        <div className="absolute left-0 right-16 md:right-0 z-20 px-4" style={{ bottom: 20 }}>
           <div className="flex items-center gap-2 mb-2">
             <Link to={`/profile/${post.author?.username}`} onClick={(e) => e.stopPropagation()}>
               <Avatar src={post.author?.avatar} name={post.author?.name} username={post.author?.username} size={34} />
@@ -500,8 +503,8 @@ export default function Reels() {
   }, []);
 
   if (loading) return (
-    <div className="fixed inset-0 flex items-center justify-center p-0 md:p-4 lg:p-6" style={{ background: "#000" }}>
-      <div className="flex h-full w-full items-center justify-center md:w-[420px] lg:w-[440px] md:rounded-[28px] md:overflow-hidden md:border md:border-white/10 md:shadow-2xl"
+    <div className="w-full min-h-screen flex items-center justify-center px-4 py-6">
+      <div className="flex h-[calc(100vh-48px)] w-full items-center justify-center md:w-[360px] lg:w-[380px] rounded-[28px] overflow-hidden border border-white/10 shadow-2xl"
         style={{ background: "#000" }}>
         <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
           style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
@@ -510,8 +513,8 @@ export default function Reels() {
   );
 
   if (posts.length === 0) return (
-    <div className="fixed inset-0 flex items-center justify-center p-0 md:p-4 lg:p-6" style={{ background: "#000" }}>
-      <div className="flex h-full w-full flex-col md:w-[420px] lg:w-[440px] md:rounded-[28px] md:overflow-hidden md:border md:border-white/10 md:shadow-2xl"
+    <div className="w-full min-h-screen flex items-center justify-center px-4 py-6">
+      <div className="flex h-[calc(100vh-48px)] w-full flex-col md:w-[360px] lg:w-[380px] rounded-[28px] overflow-hidden border border-white/10 shadow-2xl"
         style={{ background: "#000" }}>
         <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
           <p className="text-white text-xl font-semibold mb-2">No videos yet</p>
@@ -527,9 +530,9 @@ export default function Reels() {
   );
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-0 md:p-4 lg:p-6" style={{ background: "#000" }}>
-      <div className="flex h-full w-full items-center justify-center gap-0 md:gap-4">
-        <div className="flex h-full w-full flex-col md:w-[420px] lg:w-[440px] md:rounded-[28px] md:overflow-hidden md:border md:border-white/10 md:shadow-2xl"
+    <div className="w-full min-h-screen flex items-center justify-center px-4 py-6">
+      <div className="flex h-[calc(100vh-48px)] w-full items-center justify-center">
+        <div className="flex h-full w-full flex-col md:w-[360px] lg:w-[380px] rounded-[28px] overflow-visible border border-white/10 shadow-2xl"
           style={{ background: "#000" }}>
           <div ref={containerRef}
             className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
@@ -548,7 +551,7 @@ export default function Reels() {
             )}
           </div>
         </div>
-        <div className="hidden md:flex flex-col gap-3">
+        <div className="hidden xl:flex flex-col gap-3 ml-24">
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => scrollToReel(-1)}
             className="w-11 h-11 rounded-full flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
