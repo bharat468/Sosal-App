@@ -1,5 +1,6 @@
 import Notification from "../models/Notification.js";
 import FollowRequest from "../models/FollowRequest.js";
+import Follow from "../models/Follow.js";
 
 // GET /api/notifications
 export const getNotifications = async (req, res) => {
@@ -18,8 +19,30 @@ export const getNotifications = async (req, res) => {
     FollowRequest.countDocuments({ recipient: req.user._id }),
   ]);
 
+  const followNotifSenders = notifications
+    .filter((n) => n.type === "follow")
+    .map((n) => n.sender?._id || n.sender?.id)
+    .filter(Boolean)
+    .map((id) => id.toString());
+
+  const [followingRows, requestedRows] = followNotifSenders.length > 0 ? await Promise.all([
+    Follow.find({ follower: req.user._id, following: { $in: followNotifSenders } }).select("following"),
+    FollowRequest.find({ sender: req.user._id, recipient: { $in: followNotifSenders } }).select("recipient"),
+  ]) : [[], []];
+
+  const followingIds = new Set(followingRows.map((row) => row.following.toString()));
+  const requestedIds = new Set(requestedRows.map((row) => row.recipient.toString()));
+
   res.json({
-    notifications: notifications.map((n) => ({ ...n.toObject(), id: n._id })),
+    notifications: notifications.map((n) => {
+      const obj = { ...n.toObject(), id: n._id };
+      const senderId = obj.sender?._id || obj.sender?.id;
+      if (obj.type === "follow" && senderId) {
+        const sid = senderId.toString();
+        obj.followStatus = followingIds.has(sid) ? "following" : requestedIds.has(sid) ? "requested" : "none";
+      }
+      return obj;
+    }),
     total, unread: unread + pendingRequests, page, pages: Math.ceil(total / limit),
   });
 };
