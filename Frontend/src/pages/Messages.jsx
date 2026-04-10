@@ -58,15 +58,33 @@ function ChatList({ activeUser, onSelect }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState("");
+  const activeUserId = String(activeUser?._id || activeUser?.id || "");
+
+  const clearUnreadForUser = useCallback((list, userId) => {
+    if (!userId) return list;
+
+    return list.map((item) => {
+      const itemUser = item.user || item;
+      const itemUserId = String(itemUser?._id || itemUser?.id || "");
+
+      if (itemUserId !== userId || (item.unread ?? 0) === 0) return item;
+      return { ...item, unread: 0 };
+    });
+  }, []);
 
   useEffect(() => {
     api.get("/messages/conversations")
       .then(({ data }) => {
-        setConversations(data);
+        setConversations(clearUnreadForUser(data, activeUserId));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [clearUnreadForUser]);
+
+  useEffect(() => {
+    if (!activeUserId) return;
+    setConversations((prev) => clearUnreadForUser(prev, activeUserId));
+  }, [activeUserId, clearUnreadForUser]);
 
   const filtered = search.trim()
     ? conversations.filter((item) => {
@@ -128,7 +146,12 @@ function ChatList({ activeUser, onSelect }) {
             const isActive = activeUser?.id === user.id;
 
             return (
-              <motion.button key={user.id} onClick={() => onSelect(user)}
+              <motion.button
+                key={user.id}
+                onClick={() => {
+                  setConversations((prev) => clearUnreadForUser(prev, String(user._id || user.id)));
+                  onSelect(user);
+                }}
                 whileTap={{ scale: 0.98 }}
                 className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left"
                 style={{ background: isActive ? "var(--bg-active)" : "transparent" }}

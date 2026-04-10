@@ -409,14 +409,177 @@ function Analytics() {
 
 // ── Reports ─────────────────────────────────────────────────
 function Reports() {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [updatingId, setUpdatingId] = useState("");
+
+  const loadReports = useCallback(() => {
+    setLoading(true);
+    api.get("/admin/reports", { params: statusFilter ? { status: statusFilter } : {} })
+      .then(({ data }) => setReports(data.reports || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [statusFilter]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
+
+  const updateStatus = async (reportId, status) => {
+    setUpdatingId(reportId);
+    try {
+      const { data } = await api.put(`/admin/reports/${reportId}`, { status });
+      setReports((prev) => prev.map((report) => (report.id === reportId ? data : report)));
+    } catch {
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
+  const badgeColor = (status) => ({
+    pending: C.warning,
+    in_review: "#85B7EB",
+    resolved: C.success,
+    dismissed: C.t3,
+  }[status] || C.t3);
+
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold" style={{ color: C.t1, fontFamily: "Sora, sans-serif" }}>Reports</h2>
-      <div className="rounded-xl p-10 flex flex-col items-center justify-center"
-        style={{ background: C.card, border: `1px solid ${C.border}` }}>
-        <AiOutlineFlag size={32} style={{ color: C.t3 }} />
-        <p className="mt-3 text-sm" style={{ color: C.t3 }}>No reports yet</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg font-bold" style={{ color: C.t1, fontFamily: "Sora, sans-serif" }}>Reports</h2>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-xl px-3 py-2 text-sm outline-none"
+          style={{ background: C.card, color: C.t1, border: `1px solid ${C.border}` }}
+        >
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="in_review">In review</option>
+          <option value="resolved">Resolved</option>
+          <option value="dismissed">Dismissed</option>
+        </select>
       </div>
+
+      {loading ? (
+        <div className="grid gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-36 rounded-xl animate-pulse" style={{ background: C.card }} />
+          ))}
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="rounded-xl p-10 flex flex-col items-center justify-center"
+          style={{ background: C.card, border: `1px solid ${C.border}` }}>
+          <AiOutlineFlag size={32} style={{ color: C.t3 }} />
+          <p className="mt-3 text-sm" style={{ color: C.t3 }}>No reports found</p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {reports.map((report) => (
+            <motion.div
+              key={report.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl p-4"
+              style={{ background: C.card, border: `1px solid ${C.border}` }}
+            >
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className="text-[11px] uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
+                      style={{ background: `${badgeColor(report.status)}18`, color: badgeColor(report.status) }}
+                    >
+                      {String(report.status || "pending").replace("_", " ")}
+                    </span>
+                    <span className="text-[11px] uppercase tracking-[0.18em] px-2.5 py-1 rounded-full"
+                      style={{ background: `${C.accent}18`, color: C.accent }}>
+                      {String(report.category || "other").replace("_", " ")}
+                    </span>
+                    <span className="text-xs" style={{ color: C.t3 }}>
+                      {formatDistanceToNow(report.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar
+                        src={report.reporter?.avatar}
+                        name={report.reporter?.name}
+                        username={report.reporter?.username}
+                        size={42}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-[0.16em]" style={{ color: C.t3 }}>Reporter</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: C.t1 }}>
+                          {report.reporter?.name || report.reporter?.username || "Unknown"}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: C.t2 }}>
+                          @{report.reporter?.username || "unknown"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar
+                        src={report.reportedUser?.avatar}
+                        name={report.reportedUser?.name}
+                        username={report.reportedUser?.username}
+                        size={42}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-[0.16em]" style={{ color: C.t3 }}>Reported user</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: C.t1 }}>
+                          {report.reportedUser?.name || report.reportedUser?.username || "Unknown"}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: C.t2 }}>
+                          @{report.reportedUser?.username || "unknown"}
+                          {report.reportedUser?.isBanned ? " • banned" : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl px-3 py-3" style={{ background: C.hover, border: `1px solid ${C.border}` }}>
+                    <p className="text-xs uppercase tracking-[0.16em]" style={{ color: C.t3 }}>Details</p>
+                    <p className="text-sm mt-2 whitespace-pre-wrap" style={{ color: C.t1 }}>
+                      {report.details?.trim() || "No extra details provided."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full lg:w-[220px] shrink-0 space-y-2">
+                  <button
+                    onClick={() => updateStatus(report.id, "in_review")}
+                    disabled={updatingId === report.id}
+                    className="w-full rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                    style={{ background: "#162331", color: "#85B7EB", border: "1px solid #264765" }}
+                  >
+                    Mark in review
+                  </button>
+                  <button
+                    onClick={() => updateStatus(report.id, "resolved")}
+                    disabled={updatingId === report.id}
+                    className="w-full rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                    style={{ background: `${C.success}18`, color: C.success, border: `1px solid ${C.success}55` }}
+                  >
+                    Resolve
+                  </button>
+                  <button
+                    onClick={() => updateStatus(report.id, "dismissed")}
+                    disabled={updatingId === report.id}
+                    className="w-full rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                    style={{ background: "transparent", color: C.t2, border: `1px solid ${C.border}` }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

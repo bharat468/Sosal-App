@@ -4,19 +4,11 @@ import Post from "../models/Post.js";
 import Story from "../models/Story.js";
 import Like from "../models/Like.js";
 import Follow from "../models/Follow.js";
-import Notification from "../models/Notification.js";
 import { uploadToCloudinary, deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
 import { uploadStreamToCloudinary } from "../middlewares/upload.js";
+import { createOrReplaceNotification, emitNotif, emitNotificationRefresh, removeNotification } from "../utils/notificationHelpers.js";
 
 const __dirname  = path.dirname(fileURLToPath(import.meta.url));
-
-const emitNotif = async (recipientId, payload) => {
-  try {
-    const { io, onlineUsers } = await import("../index.js");
-    const socketId = onlineUsers.get(recipientId.toString());
-    if (socketId) io.to(socketId).emit("notification", payload);
-  } catch {}
-};
 
 const shuffle = (arr) => {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -297,15 +289,21 @@ export const likePost = async (req, res) => {
     const existing = await Like.findOne({ user: req.user._id, post: post._id });
     if (existing) {
       await existing.deleteOne();
+      await removeNotification({ type: "like", recipient: post.author, sender: req.user._id, post: post._id });
+      await emitNotificationRefresh(post.author);
       const count = await Like.countDocuments({ post: post._id });
       return res.json({ liked: false, likes: count });
     }
 
     await Like.create({ user: req.user._id, post: post._id });
     if (post.author.toString() !== req.user._id.toString()) {
-      const notif = await Notification.create({ type: "like", recipient: post.author, sender: req.user._id, post: post._id });
-      await notif.populate("sender", "id username name avatar");
-      await notif.populate("post", "id mediaUrl caption");
+      const notif = await createOrReplaceNotification(
+        { type: "like", recipient: post.author, sender: req.user._id, post: post._id, read: false },
+        [
+          { path: "sender", select: "id username name avatar" },
+          { path: "post", select: "id mediaUrl caption" },
+        ]
+      );
       await emitNotif(post.author, { ...notif.toObject(), id: notif._id });
     }
 

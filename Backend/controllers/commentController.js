@@ -1,14 +1,6 @@
 import Comment from "../models/Comment.js";
 import Post from "../models/Post.js";
-import Notification from "../models/Notification.js";
-
-const emitNotif = async (recipientId, payload) => {
-  try {
-    const { io, onlineUsers } = await import("../index.js");
-    const socketId = onlineUsers.get(recipientId.toString());
-    if (socketId) io.to(socketId).emit("notification", payload);
-  } catch {}
-};
+import { emitNotif, emitNotificationRefresh, syncCommentNotification } from "../utils/notificationHelpers.js";
 
 // POST /api/posts/:id/comments
 export const addComment = async (req, res) => {
@@ -22,13 +14,14 @@ export const addComment = async (req, res) => {
   await comment.populate("author", "id username name avatar");
 
   if (post.author.toString() !== req.user._id.toString()) {
-    const notif = await Notification.create({
-      type: "comment", recipient: post.author, sender: req.user._id,
-      post: post._id, comment: comment._id,
+    const notif = await syncCommentNotification({
+      recipient: post.author,
+      sender: req.user._id,
+      post: post._id,
     });
-    await notif.populate("sender", "id username name avatar");
-    await notif.populate("post", "id mediaUrl caption");
-    await emitNotif(post.author, { ...notif.toObject(), id: notif._id });
+    if (notif) {
+      await emitNotif(post.author, { ...notif.toObject(), id: notif._id });
+    }
   }
 
   res.status(201).json({ ...comment.toObject(), id: comment._id });
@@ -62,6 +55,19 @@ export const deleteComment = async (req, res) => {
   if (!isCommentAuthor && !isPostAuthor)
     return res.status(403).json({ message: "Not authorized" });
 
+  const notifRecipient = post?.author;
+  const notifSender = comment.author;
+
   await comment.deleteOne();
+
+  if (notifRecipient && notifSender && notifRecipient.toString() !== notifSender.toString()) {
+    await syncCommentNotification({
+      recipient: notifRecipient,
+      sender: notifSender,
+      post: comment.post,
+    });
+    await emitNotificationRefresh(notifRecipient);
+  }
+
   res.json({ message: "Comment deleted" });
 };

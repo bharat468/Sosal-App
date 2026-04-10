@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { IoClose, IoShareSocialOutline } from "react-icons/io5";
 import { AiOutlineSend } from "react-icons/ai";
@@ -7,16 +7,19 @@ import toast from "react-hot-toast";
 import Avatar from "./Avatar";
 import api from "../api/api";
 
-export default function ShareModal({ post, onClose }) {
+export default function ProfileShareModal({ profile, onClose }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sent, setSent] = useState({});
   const [copied, setCopied] = useState(false);
-  const [search, setSearch] = useState("");
   const [sharingNative, setSharingNative] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const postId = post.id || post._id;
-  const postUrl = `${window.location.origin}/post/${postId}`;
+  const profileId = profile?.id || profile?._id;
+  const profileUrl = useMemo(
+    () => `${window.location.origin}/profile/${profile?.username || ""}`,
+    [profile?.username]
+  );
 
   useEffect(() => {
     api.get("/messages/conversations")
@@ -24,8 +27,7 @@ export default function ShareModal({ post, onClose }) {
         const byId = new Map();
         (data || []).forEach((conversation) => {
           const user = conversation.user;
-          if (!user) return;
-          const uid = (user._id || user.id)?.toString();
+          const uid = (user?._id || user?.id)?.toString();
           if (uid) byId.set(uid, user);
         });
         setUsers([...byId.values()]);
@@ -35,49 +37,41 @@ export default function ShareModal({ post, onClose }) {
   }, []);
 
   const recordShare = async () => {
-    if (!postId) return;
+    if (!profileId) return;
     try {
-      await api.post(`/posts/${postId}/share`);
+      await api.post(`/users/${profileId}/share`);
     } catch {}
   };
 
   const buildShareMessage = () => {
-    const author = post.author?.username || "someone";
-
-    if (post.mediaUrl && post.mediaType === "image") {
-      return `Photo from @${author}${post.caption ? `: "${post.caption.slice(0, 80)}"` : ""}\n${postUrl}`;
-    }
-
-    if (post.mediaType === "video") {
-      return `Reel from @${author}${post.caption ? `: "${post.caption.slice(0, 80)}"` : ""}\n${postUrl}`;
-    }
-
-    return `Post from @${author}${post.caption ? `: "${post.caption.slice(0, 100)}"` : ""}\n${postUrl}`;
+    const name = profile?.name || profile?.username || "Someone";
+    const bio = profile?.bio ? `\n${profile.bio.slice(0, 100)}` : "";
+    return `Check out @${profile?.username}'s profile on Sosal\n${name}${bio}\n${profileUrl}`;
   };
 
   const handleSend = async (user) => {
-    const uid = (user._id || user.id)?.toString();
+    const uid = (user?._id || user?.id)?.toString();
     if (!uid || sent[uid]) return;
 
     try {
       await api.post(`/messages/${uid}`, { text: buildShareMessage() });
       await recordShare();
       setSent((prev) => ({ ...prev, [uid]: true }));
-      toast.success(`Sent to @${user.username}`);
-    } catch {
-      toast.error("Unable to send post");
+      toast.success(`Profile sent to @${user.username}`);
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Unable to send profile.");
     }
   };
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(postUrl);
+      await navigator.clipboard.writeText(profileUrl);
       await recordShare();
       setCopied(true);
-      toast.success("Link copied");
+      toast.success("Profile link copied");
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Unable to copy link");
+      toast.error("Unable to copy profile link.");
     }
   };
 
@@ -87,13 +81,13 @@ export default function ShareModal({ post, onClose }) {
     try {
       setSharingNative(true);
       await navigator.share({
-        title: `${post.author?.username || "Someone"} on Sosal`,
-        text: buildShareMessage(),
-        url: postUrl,
+        title: `${profile?.name || profile?.username} on Sosal`,
+        text: `Check out @${profile?.username}'s profile on Sosal`,
+        url: profileUrl,
       });
       await recordShare();
-    } catch {}
-    finally {
+    } catch {
+    } finally {
       setSharingNative(false);
     }
   };
@@ -129,31 +123,29 @@ export default function ShareModal({ post, onClose }) {
       >
         <div className="flex items-center justify-between px-4 py-3 shrink-0"
           style={{ borderBottom: "1px solid var(--border)" }}>
-          <h3 className="text-sm font-bold" style={{ color: "var(--t1)", fontFamily: "Syne, sans-serif" }}>Share</h3>
+          <h3 className="text-sm font-bold" style={{ color: "var(--t1)", fontFamily: "Syne, sans-serif" }}>Share profile</h3>
           <motion.button whileTap={{ scale: 0.85 }} onClick={onClose} style={{ color: "var(--t3)" }}>
             <IoClose size={22} />
           </motion.button>
         </div>
 
-        {post.mediaUrl && (
-          <div className="px-4 py-3 shrink-0 flex items-center gap-3"
-            style={{ borderBottom: "1px solid var(--border-soft)" }}>
-            {post.mediaType === "video"
-              ? <video src={post.mediaUrl} className="w-14 h-14 rounded-xl object-cover shrink-0" muted playsInline preload="metadata" />
-              : <img src={post.mediaUrl} alt="post" className="w-14 h-14 rounded-xl object-cover shrink-0" />
-            }
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate" style={{ color: "var(--t1)" }}>
-                {post.author?.username}
+        <div className="px-4 py-4 shrink-0 flex items-center gap-3"
+          style={{ borderBottom: "1px solid var(--border-soft)" }}>
+          <Avatar src={profile?.avatar} name={profile?.name} username={profile?.username} size={54} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate" style={{ color: "var(--t1)" }}>
+              {profile?.name || profile?.username}
+            </p>
+            <p className="text-xs truncate" style={{ color: "var(--t3)" }}>
+              @{profile?.username}
+            </p>
+            {profile?.bio && (
+              <p className="text-xs truncate mt-1" style={{ color: "var(--t3)" }}>
+                {profile.bio}
               </p>
-              {post.caption && (
-                <p className="text-xs truncate mt-0.5" style={{ color: "var(--t3)" }}>
-                  {post.caption.slice(0, 60)}
-                </p>
-              )}
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="px-4 py-3 shrink-0 grid gap-2" style={{ borderBottom: "1px solid var(--border-soft)" }}>
           <motion.button
@@ -169,7 +161,7 @@ export default function ShareModal({ post, onClose }) {
                 : <BsLink45Deg size={18} style={{ color: "var(--accent)" }} />}
             </div>
             <span className="text-sm font-medium" style={{ color: "var(--t1)" }}>
-              {copied ? "Link copied!" : "Copy link"}
+              {copied ? "Link copied!" : "Copy profile link"}
             </span>
           </motion.button>
 
@@ -186,7 +178,7 @@ export default function ShareModal({ post, onClose }) {
                 <IoShareSocialOutline size={18} style={{ color: "var(--accent)" }} />
               </div>
               <span className="text-sm font-medium" style={{ color: "var(--t1)" }}>
-                {sharingNative ? "Opening share..." : "Share to WhatsApp and other apps"}
+                {sharingNative ? "Opening share..." : "Share via device"}
               </span>
             </motion.button>
           )}
@@ -196,7 +188,7 @@ export default function ShareModal({ post, onClose }) {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search people..."
+            placeholder="Send profile in messages..."
             className="w-full text-sm px-3 py-2 rounded-xl outline-none"
             style={{ background: "var(--bg-input)", color: "var(--t1)", border: "1px solid var(--border)" }}
           />

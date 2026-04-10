@@ -100,8 +100,16 @@ export default function Notifications() {
         api.get("/users/requests").then(({ data }) => setRequests(data)).catch(() => {});
       }
     };
+    const refreshHandler = () => {
+      dispatch(fetchNotifications());
+      api.get("/users/requests").then(({ data }) => setRequests(data)).catch(() => {});
+    };
     socket.on("notification", handler);
-    return () => socket.off("notification", handler);
+    socket.on("notifications_changed", refreshHandler);
+    return () => {
+      socket.off("notification", handler);
+      socket.off("notifications_changed", refreshHandler);
+    };
   }, [socket, dispatch]);
 
   const handleRequestAction = (requestId) => {

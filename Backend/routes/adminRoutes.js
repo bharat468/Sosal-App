@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getStats, getUsers, updateUser, deleteUser,
   getPosts, deletePost,
+  getReports, updateReport,
 } from "../controllers/adminController.js";
 import protect from "../middlewares/authMiddleware.js";
 
@@ -21,6 +22,8 @@ router.put("/users/:id",     updateUser);
 router.delete("/users/:id",  deleteUser);
 router.get("/posts",         getPosts);
 router.delete("/posts/:id",  deletePost);
+router.get("/reports",       getReports);
+router.put("/reports/:id",   updateReport);
 
 // Promote/demote user role (admin only)
 router.put("/users/:id/role", async (req, res) => {

@@ -7,17 +7,9 @@ import Notification from "../models/Notification.js";
 import Post from "../models/Post.js";
 import { deleteFromCloudinary, getPublicId } from "../utils/cloudinary.js";
 import { uploadStreamToCloudinary } from "../middlewares/upload.js";
+import { createOrReplaceNotification, emitNotif, emitNotificationRefresh, removeNotification } from "../utils/notificationHelpers.js";
 
 const safe = (u) => { const obj = u.toObject ? u.toObject() : u; const { password, ...rest } = obj; return { ...rest, id: u._id }; };
-
-// Helper: emit socket notification to a user
-const emitNotif = async (recipientId, payload) => {
-  try {
-    const { io, onlineUsers } = await import("../index.js");
-    const socketId = onlineUsers.get(recipientId.toString());
-    if (socketId) io.to(socketId).emit("notification", payload);
-  } catch {}
-};
 
 // GET /api/users/:username
 export const getProfile = async (req, res) => {
@@ -134,6 +126,8 @@ export const followUser = async (req, res) => {
   const alreadyFollowing = await Follow.findOne({ follower: req.user._id, following: targetId });
   if (alreadyFollowing) {
     await alreadyFollowing.deleteOne();
+    await removeNotification({ type: "follow", recipient: targetId, sender: req.user._id });
+    await emitNotificationRefresh(targetId);
     const count = await Follow.countDocuments({ following: targetId });
     return res.json({ status: "unfollowed", following: false, followerCount: count });
   }
@@ -150,8 +144,10 @@ export const followUser = async (req, res) => {
   // Private account → send request
   if (target.isPrivate) {
     await FollowRequest.create({ sender: req.user._id, recipient: targetId });
-    const notif = await Notification.create({ type: "follow_request", recipient: targetId, sender: req.user._id });
-    await notif.populate("sender", "id username name avatar");
+    const notif = await createOrReplaceNotification(
+      { type: "follow_request", recipient: targetId, sender: req.user._id, read: false },
+      [{ path: "sender", select: "id username name avatar" }]
+    );
     // Socket emit to recipient
     await emitNotif(targetId, { ...notif.toObject(), id: notif._id });
     return res.json({ status: "requested", following: false, requested: true });
@@ -159,8 +155,10 @@ export const followUser = async (req, res) => {
 
   // Public account → follow directly
   await Follow.create({ follower: req.user._id, following: targetId });
-  const notif = await Notification.create({ type: "follow", recipient: targetId, sender: req.user._id });
-  await notif.populate("sender", "id username name avatar");
+  const notif = await createOrReplaceNotification(
+    { type: "follow", recipient: targetId, sender: req.user._id, read: false },
+    [{ path: "sender", select: "id username name avatar" }]
+  );
   // Socket emit to recipient
   await emitNotif(targetId, { ...notif.toObject(), id: notif._id });
 
@@ -177,8 +175,10 @@ export const acceptFollowRequest = async (req, res) => {
   await Follow.create({ follower: request.sender, following: req.user._id });
   await request.deleteOne();
 
-  const notif = await Notification.create({ type: "follow_accepted", recipient: request.sender, sender: req.user._id });
-  await notif.populate("sender", "id username name avatar");
+  const notif = await createOrReplaceNotification(
+    { type: "follow_accepted", recipient: request.sender, sender: req.user._id, read: false },
+    [{ path: "sender", select: "id username name avatar" }]
+  );
   await emitNotif(request.sender, { ...notif.toObject(), id: notif._id });
 
   res.json({ message: "Request accepted" });
@@ -242,6 +242,27 @@ export const getFollowers = async (req, res) => {
       followStatus: followingIds.has(uid) ? "following" : requestedIds.has(uid) ? "requested" : "none",
     };
   }));
+};
+
+// POST /api/users/:id/share
+export const shareProfile = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { profileShares: 1 } },
+      { new: true }
+    ).select("username profileShares");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      message: "Profile share recorded",
+      user: { ...safe(user), profileShares: user.profileShares },
+    });
+  } catch (err) {
+    console.error("[shareProfile]", err.message);
+    res.status(500).json({ message: "Failed to share profile" });
+  }
 };
 
 // GET /api/users/:id/following
