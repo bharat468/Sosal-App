@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiFillHeart, AiOutlineComment } from "react-icons/ai";
 import { BsGrid3X3, BsCameraVideo, BsLock, BsThreeDots } from "react-icons/bs";
-import { IoClose } from "react-icons/io5";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 import FollowersModal from "../components/FollowersModal";
+import ProfileShareModal from "../components/ProfileShareModal";
+import ReportUserModal from "../components/ReportUserModal";
 import api from "../api/api";
 import { showFollowErrorToast, showFollowToast } from "../utils/followFeedback";
 
@@ -24,6 +25,9 @@ export default function UserProfile() {
   const [blocked, setBlocked]         = useState(false);
   const [showMenu, setShowMenu]       = useState(false);
   const [followModal, setFollowModal] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const menuRef = useRef(null);
 
   const myId = (currentUser?._id || currentUser?.id)?.toString();
 
@@ -47,6 +51,19 @@ export default function UserProfile() {
   };
 
   useEffect(() => { loadProfile(); }, [username]);
+
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const handleOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showMenu]);
 
   const handleFollow = async () => {
     if (!profile || followLoading) return;
@@ -129,6 +146,19 @@ export default function UserProfile() {
         {followModal && profile && (
           <FollowersModal userId={profile.id} type={followModal} onClose={() => setFollowModal(null)} />
         )}
+        {showReportModal && profile && (
+          <ReportUserModal
+            user={profile}
+            onClose={() => setShowReportModal(false)}
+            onSubmitted={() => setShowMenu(false)}
+          />
+        )}
+        {showShareModal && profile && (
+          <ProfileShareModal
+            profile={profile}
+            onClose={() => setShowShareModal(false)}
+          />
+        )}
       </AnimatePresence>
 
       <div className="px-4 py-3 sticky top-0 z-10 app-header flex items-center justify-between">
@@ -136,33 +166,42 @@ export default function UserProfile() {
           {profile.username}
           {profile.isPrivate && <BsLock size={14} style={{ color: "var(--t3)" }} />}
         </h1>
-        <div className="relative">
-          <motion.button whileTap={{ scale: 0.85 }} onClick={() => setShowMenu(!showMenu)} style={{ color: "var(--t3)" }}>
-            <BsThreeDots size={20} />
-          </motion.button>
-          <AnimatePresence>
-            {showMenu && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute right-0 top-8 rounded-xl overflow-hidden z-20 min-w-[160px]"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
-                <button onClick={handleBlock}
-                  className="w-full px-4 py-3 text-sm text-left font-medium"
-                  style={{ color: blocked ? "var(--t1)" : "#f87171" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                  {blocked ? "Unblock user" : "Block user"}
-                </button>
-                <button onClick={() => setShowMenu(false)}
-                  className="w-full px-4 py-3 text-sm text-left font-medium"
-                  style={{ color: "var(--t1)" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                  Report
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {!isOwn && (
+          <div ref={menuRef} className="relative">
+            <motion.button whileTap={{ scale: 0.85 }} onClick={() => setShowMenu(!showMenu)} style={{ color: "var(--t3)" }}>
+              <BsThreeDots size={20} />
+            </motion.button>
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                  className="absolute right-0 top-8 rounded-xl overflow-hidden z-20 min-w-[160px]"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+                  <button onClick={handleBlock}
+                    className="w-full px-4 py-3 text-sm text-left font-medium"
+                    style={{ color: blocked ? "var(--t1)" : "#f87171" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                    {blocked ? "Unblock user" : "Block user"}
+                  </button>
+                  <button onClick={() => { setShowMenu(false); setShowShareModal(true); }}
+                    className="w-full px-4 py-3 text-sm text-left font-medium"
+                    style={{ color: "var(--t1)" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                    Share profile
+                  </button>
+                  <button onClick={() => { setShowMenu(false); setShowReportModal(true); }}
+                    className="w-full px-4 py-3 text-sm text-left font-medium"
+                    style={{ color: "var(--t1)" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                    Report
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
       {/* Profile info */}

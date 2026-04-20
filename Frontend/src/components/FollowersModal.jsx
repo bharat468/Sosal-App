@@ -11,23 +11,43 @@ export default function FollowersModal({ userId, type, onClose }) {
   const { currentUser } = useSelector((s) => s.user);
   const [users, setUsers]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [followed, setFollowed] = useState({});
+  const [followStatus, setFollowStatus] = useState({});
+  const [followLoading, setFollowLoading] = useState({});
 
   useEffect(() => {
     const endpoint = type === "followers" ? `/users/${userId}/followers` : `/users/${userId}/following`;
     api.get(endpoint)
-      .then(({ data }) => setUsers(data))
+      .then(({ data }) => {
+        setUsers(data);
+        setFollowStatus(
+          Object.fromEntries(
+            data.map((user) => [((user._id || user.id)?.toString()), user.followStatus || "none"])
+          )
+        );
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [userId, type]);
 
   const handleFollow = async (uid) => {
+    if (!uid || followLoading[uid]) return;
+    setFollowLoading((p) => ({ ...p, [uid]: true }));
     try {
       const { data } = await api.post(`/users/${uid}/follow`);
-      setFollowed((p) => ({ ...p, [uid]: data.following }));
+      setFollowStatus((p) => ({
+        ...p,
+        [uid]:
+          data.status === "followed" ? "following" :
+          data.status === "unfollowed" ? "none" :
+          data.status === "requested" ? "requested" :
+          data.status === "request_cancelled" ? "none" :
+          p[uid] || "none",
+      }));
       showFollowToast(data.status);
     } catch (e) {
       showFollowErrorToast(e?.response?.data?.message);
+    } finally {
+      setFollowLoading((p) => ({ ...p, [uid]: false }));
     }
   };
 
@@ -69,6 +89,9 @@ export default function FollowersModal({ userId, type, onClose }) {
               const uid = (user._id || user.id)?.toString();
               const myId = (currentUser?._id || currentUser?.id)?.toString();
               const isMe = uid === myId;
+              const status = followStatus[uid] || "none";
+              const isRequested = status === "requested";
+              const isFollowing = status === "following";
               return (
                 <div key={uid} className="flex items-center gap-3 px-4 py-3"
                   onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
@@ -82,14 +105,14 @@ export default function FollowersModal({ userId, type, onClose }) {
                       <p className="text-xs truncate" style={{ color: "var(--t3)" }}>{user.name}</p>
                     </Link>
                   </div>
-                  <motion.button whileTap={{ scale: 0.88 }} onClick={() => !isMe && handleFollow(uid)} disabled={isMe}
+                  <motion.button whileTap={{ scale: 0.88 }} onClick={() => !isMe && handleFollow(uid)} disabled={isMe || !!followLoading[uid]}
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
                     style={isMe
                       ? { background: "var(--bg-input)", color: "var(--t3)", border: "1px solid var(--border)" }
-                      : followed[uid]
+                      : isRequested || isFollowing
                         ? { background: "var(--bg-input)", color: "var(--t3)", border: "1px solid var(--border)" }
                         : { background: "var(--accent)", color: "#fff" }}>
-                    {isMe ? "You" : followed[uid] ? "Following" : "Follow"}
+                    {isMe ? "You" : followLoading[uid] ? "..." : isRequested ? "Requested" : isFollowing ? "Unfollow" : "Follow"}
                   </motion.button>
                 </div>
               );

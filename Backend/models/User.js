@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   avatar:    { type: String, default: "" },
   bio:       { type: String, default: "", maxlength: 150 },
   website:   { type: String, default: "" },
+  profileShares: { type: Number, default: 0 },
   isPrivate: { type: Boolean, default: false },
   isBanned:  { type: Boolean, default: false },
   role:      { type: String, enum: ["user", "admin"], default: "user" },

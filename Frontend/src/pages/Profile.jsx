@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 import FollowersModal from "../components/FollowersModal";
+import ProfileShareModal from "../components/ProfileShareModal";
 import { useTheme } from "../context/ThemeContext";
 import api from "../api/api";
 
@@ -176,6 +177,7 @@ export default function Profile() {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [showMenu, setShowMenu]     = useState(false);
   const [showEdit, setShowEdit]     = useState(false);
+  const [showShare, setShowShare]   = useState(false);
   const [followModal, setFollowModal] = useState(null); // "followers" | "following" | null
 
   const loadSavedPosts = () => {
@@ -233,6 +235,14 @@ export default function Profile() {
             userId={currentUser._id || currentUser.id}
             type={followModal}
             onClose={() => setFollowModal(null)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showShare && (
+          <ProfileShareModal
+            profile={currentUser}
+            onClose={() => setShowShare(false)}
           />
         )}
       </AnimatePresence>
@@ -337,7 +347,7 @@ export default function Profile() {
             style={{ background: "var(--bg-input)", color: "var(--t1)", border: "1px solid var(--border)" }}>
             Edit profile
           </motion.button>
-          <motion.button whileTap={{ scale: 0.94 }}
+          <motion.button whileTap={{ scale: 0.94 }} onClick={() => setShowShare(true)}
             className="flex-1 text-sm font-semibold py-[7px] rounded-lg"
             style={{ background: "var(--bg-input)", color: "var(--t1)", border: "1px solid var(--border)" }}>
             Share profile

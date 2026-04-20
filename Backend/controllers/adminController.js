@@ -5,6 +5,7 @@ import Comment from "../models/Comment.js";
 import Follow from "../models/Follow.js";
 import Message from "../models/Message.js";
 import Notification from "../models/Notification.js";
+import Report from "../models/Report.js";
 
 // GET /api/admin/stats
 export const getStats = async (req, res) => {
@@ -119,4 +120,50 @@ export const deletePost = async (req, res) => {
     post.deleteOne(),
   ]);
   res.json({ message: "Post deleted" });
+};
+
+// GET /api/admin/reports
+export const getReports = async (req, res) => {
+  const { page = 1, limit = 20, status = "" } = req.query;
+  const filter = status ? { status } : {};
+
+  const [reports, total] = await Promise.all([
+    Report.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit))
+      .populate("reporter", "id username name avatar")
+      .populate("reportedUser", "id username name avatar isBanned"),
+    Report.countDocuments(filter),
+  ]);
+
+  res.json({
+    reports: reports.map((report) => ({ ...report.toObject(), id: report._id })),
+    total,
+    page: parseInt(page),
+  });
+};
+
+// PUT /api/admin/reports/:id
+export const updateReport = async (req, res) => {
+  const { status, adminNote = "" } = req.body;
+  if (!["pending", "in_review", "resolved", "dismissed"].includes(status)) {
+    return res.status(400).json({ message: "Invalid report status" });
+  }
+
+  const report = await Report.findByIdAndUpdate(
+    req.params.id,
+    {
+      status,
+      adminNote: String(adminNote).trim(),
+      reviewedAt: ["resolved", "dismissed"].includes(status) ? new Date() : null,
+    },
+    { new: true }
+  )
+    .populate("reporter", "id username name avatar")
+    .populate("reportedUser", "id username name avatar isBanned");
+
+  if (!report) return res.status(404).json({ message: "Report not found" });
+
+  res.json({ ...report.toObject(), id: report._id });
 };

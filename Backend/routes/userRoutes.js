@@ -2,9 +2,10 @@ import { Router } from "express";
 import {
   getProfile, updateProfile, changePassword,
   followUser, searchUsers, getFollowers, getFollowing,
-  getSuggestions, acceptFollowRequest, rejectFollowRequest, getFollowRequests,
+  getSuggestions, acceptFollowRequest, rejectFollowRequest, getFollowRequests, shareProfile,
 } from "../controllers/userController.js";
 import { toggleBlock, getBlocked } from "../controllers/blockController.js";
+import { reportUser } from "../controllers/reportController.js";
 import protect from "../middlewares/authMiddleware.js";
 import upload  from "../middlewares/upload.js";
 
@@ -21,7 +22,9 @@ router.post("/requests/:requestId/accept", acceptFollowRequest);
 router.post("/requests/:requestId/reject", rejectFollowRequest);
 router.get("/:username",                   getProfile);
 router.post("/:id/follow",                 followUser);
+router.post("/:id/share",                  shareProfile);
 router.post("/:id/block",                  toggleBlock);
+router.post("/:id/report",                 reportUser);
 router.get("/:id/followers",               getFollowers);
 router.get("/:id/following",               getFollowing);
 
